@@ -1,12 +1,14 @@
 'use client'
 
-import { useState } from 'react'
-import { Plus, Loader2 } from 'lucide-react'
-import { WatchlistUser, MediaType } from '@/types'
+import { useState, useEffect, useRef } from 'react'
+import Image from 'next/image'
+import { Plus, Loader2, Search, Film, Tv } from 'lucide-react'
+import { WatchlistUser, MediaType, OMDBSearchResult } from '@/types'
+import { searchMovies } from '@/lib/omdb'
 import { clsx } from 'clsx'
 
 interface Props {
-  onAdd: (title: string, type: MediaType, who: WatchlistUser) => Promise<void>
+  onAdd: (title: string, type: MediaType, who: WatchlistUser, imdbID?: string) => Promise<void>
 }
 
 const USERS: { value: WatchlistUser; initial: string; label: string }[] = [
@@ -20,9 +22,51 @@ export default function AddMovieForm({ onAdd }: Props) {
   const [who, setWho] = useState<WatchlistUser>('Kristel')
   const [loading, setLoading] = useState(false)
 
+  const [suggestions, setSuggestions] = useState<OMDBSearchResult[]>([])
+  const [searching, setSearching] = useState(false)
+  const [showDropdown, setShowDropdown] = useState(false)
+  const wrapperRef = useRef<HTMLDivElement>(null)
+
+  // Debounced live search as the user types
+  useEffect(() => {
+    if (title.trim().length < 2) {
+      setSuggestions([])
+      return
+    }
+    setSearching(true)
+    const timer = setTimeout(async () => {
+      const results = await searchMovies(title.trim(), type)
+      setSuggestions(results)
+      setSearching(false)
+      setShowDropdown(true)
+    }, 350)
+    return () => clearTimeout(timer)
+  }, [title, type])
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        setShowDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
+  async function pickSuggestion(s: OMDBSearchResult) {
+    setShowDropdown(false)
+    setTitle('')
+    setSuggestions([])
+    setLoading(true)
+    await onAdd(s.Title, type, who, s.imdbID)
+    setLoading(false)
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!title.trim() || loading) return
+    setShowDropdown(false)
     setLoading(true)
     await onAdd(title.trim(), type, who)
     setTitle('')
@@ -59,13 +103,50 @@ export default function AddMovieForm({ onAdd }: Props) {
       </div>
 
       <div className="flex gap-2 mb-2">
-        <input
-          type="text"
-          value={title}
-          onChange={e => setTitle(e.target.value)}
-          placeholder="Search for a movie or show..."
-          className="flex-1 bg-white/80 border border-rose-100 rounded-xl px-4 py-2.5 text-sm text-gray-700 placeholder-gray-300 outline-none focus:border-rose-300 focus:ring-2 focus:ring-rose-100 transition-all"
-        />
+        <div ref={wrapperRef} className="relative flex-1">
+          <div className="relative">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" />
+            <input
+              type="text"
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              onFocus={() => suggestions.length > 0 && setShowDropdown(true)}
+              placeholder="Start typing a movie or show name..."
+              className="w-full bg-white/80 border border-rose-100 rounded-xl pl-9 pr-4 py-2.5 text-sm text-gray-700 placeholder-gray-300 outline-none focus:border-rose-300 focus:ring-2 focus:ring-rose-100 transition-all"
+            />
+            {searching && (
+              <Loader2 size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-rose-300 animate-spin" />
+            )}
+          </div>
+
+          {/* Suggestions dropdown */}
+          {showDropdown && suggestions.length > 0 && (
+            <div className="absolute z-20 left-0 right-0 mt-1 bg-white rounded-xl border border-rose-100 shadow-xl shadow-rose-100/50 overflow-hidden max-h-80 overflow-y-auto">
+              {suggestions.map(s => (
+                <button
+                  key={s.imdbID}
+                  type="button"
+                  onClick={() => pickSuggestion(s)}
+                  className="w-full flex items-center gap-3 px-3 py-2 hover:bg-rose-50 transition-colors text-left border-b border-rose-50 last:border-0"
+                >
+                  <div className="w-9 h-13 rounded-md overflow-hidden flex-shrink-0 bg-rose-50 flex items-center justify-center" style={{ height: '52px' }}>
+                    {s.Poster && s.Poster !== 'N/A' ? (
+                      <Image src={s.Poster} alt={s.Title} width={36} height={52} className="w-full h-full object-cover" />
+                    ) : (
+                      type === 'tv' ? <Tv size={16} className="text-rose-200" /> : <Film size={16} className="text-rose-200" />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-gray-800 truncate">{s.Title}</p>
+                    <p className="text-xs text-gray-400">{s.Year}</p>
+                  </div>
+                  <Plus size={16} className="text-rose-400 flex-shrink-0" />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
         <select
           value={type}
           onChange={e => setType(e.target.value as MediaType)}
@@ -82,8 +163,9 @@ export default function AddMovieForm({ onAdd }: Props) {
         className="w-full flex items-center justify-center gap-2 bg-rose-500 hover:bg-rose-600 disabled:bg-rose-300 text-white font-medium py-2.5 rounded-xl text-sm transition-all"
       >
         {loading ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
-        {loading ? 'Fetching info...' : 'Add to Watchlist'}
+        {loading ? 'Adding...' : 'Add to Watchlist'}
       </button>
+      <p className="text-xs text-gray-300 text-center mt-2">Pick a suggestion above, or type a full title and hit add</p>
     </form>
   )
 }
