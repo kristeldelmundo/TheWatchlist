@@ -2,12 +2,12 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'The Watchlist 🎬',
-  description: 'Your shared couples movie & TV watchlist — add, pick, rate, and share.',
+  title: 'CinePop 🍿',
+  description: 'Pick, watch, and feel — your shared movie night app.',
   icons: { icon: '/favicon.ico' },
   openGraph: {
-    title: 'The Watchlist',
-    description: 'Your shared couples movie night app',
+    title: 'CinePop',
+    description: 'Pick, watch, and feel — your shared movie night app.',
     type: 'website',
   },
 }

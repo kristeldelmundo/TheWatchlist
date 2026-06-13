@@ -18,9 +18,9 @@ export default function Navbar() {
     <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-rose-100">
       <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2 group">
-          <span className="text-xl">🎬</span>
+          <span className="text-xl">🍿</span>
           <span className="font-display text-lg font-medium text-rose-600 italic group-hover:text-rose-700 transition-colors">
-            The Watchlist
+            CinePop
           </span>
         </Link>
 

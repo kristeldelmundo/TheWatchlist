@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Film, Shuffle, Star, Heart } from 'lucide-react'
+import { Film, Shuffle, Star, Heart, Popcorn } from 'lucide-react'
 
 export default function HomePage() {
   return (
@@ -9,15 +9,15 @@ export default function HomePage() {
       {/* Nav */}
       <nav className="flex items-center justify-between px-6 py-5 max-w-5xl mx-auto w-full">
         <div className="flex items-center gap-2">
-          <span className="text-2xl">🎬</span>
-          <span className="font-display text-xl font-medium text-rose-600 italic">The Watchlist</span>
+          <span className="text-2xl">🍿</span>
+          <span className="font-display text-xl font-medium text-rose-600 italic">CinePop</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1 bg-white/80 border border-rose-100 rounded-full px-4 py-1.5 text-sm text-gray-500">
             <span className="w-6 h-6 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center text-xs font-medium">K</span>
-            <span className="mx-1 text-gray-300">&</span>
+            <span className="mx-1 text-gray-300">&amp;</span>
             <span className="w-6 h-6 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center text-xs font-medium">E</span>
-            <span className="ml-1">Kristel & Eric</span>
+            <span className="ml-1">Kristel &amp; Eric</span>
           </div>
         </div>
       </nav>
@@ -28,9 +28,11 @@ export default function HomePage() {
           <Heart size={14} fill="currentColor" /> your shared movie night app
         </div>
 
-        <h1 className="font-display text-6xl md:text-7xl font-bold leading-tight mb-6">
-          <span className="gradient-text italic">The Watchlist</span>
+        <h1 className="font-display text-6xl md:text-7xl font-bold leading-tight mb-4">
+          <span className="gradient-text italic">CinePop</span>
         </h1>
+
+        <p className="text-base text-rose-400 font-medium mb-4 italic">Pop something on tonight 🍿</p>
 
         <p className="text-lg text-gray-500 mb-10 max-w-md leading-relaxed">
           Add movies and shows, let fate decide what you watch,
@@ -55,8 +57,8 @@ export default function HomePage() {
         {/* Feature cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full max-w-2xl">
           {[
-            { icon: <Film size={22} />, color: 'rose', title: 'Shared Watchlist', desc: 'Both of you add movies & shows, sorted by category' },
-            { icon: <Shuffle size={22} />, color: 'plum', title: 'Movie Randomizer', desc: "Can't decide? Let the spinner pick for you" },
+            { icon: <Film size={22} />, color: 'rose', title: 'Shared Watchlist', desc: 'Everyone adds movies & shows, sorted by category' },
+            { icon: <Shuffle size={22} />, color: 'plum', title: 'CinePop Picker', desc: "Can't decide? Let the spinner pop something on for you" },
             { icon: <Star size={22} />, color: 'amber', title: 'Rate & Share', desc: 'Review together and share your movie card with friends' },
           ].map((f, i) => (
             <div key={i} className="glass rounded-2xl p-5 text-left hover:scale-105 transition-transform">
@@ -76,7 +78,7 @@ export default function HomePage() {
 
       {/* Footer */}
       <footer className="text-center py-6 text-xs text-gray-400">
-        made with <Heart size={10} className="inline text-rose-400" fill="currentColor" /> for movie nights 🍿
+        made with <Heart size={10} className="inline text-rose-400" fill="currentColor" /> for movie nights &nbsp;🍿
       </footer>
     </main>
   )

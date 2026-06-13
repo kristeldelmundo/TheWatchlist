@@ -102,7 +102,6 @@ export default function WatchlistPage() {
 
         <AddMovieForm onAdd={handleAdd} />
 
-        {/* Filters */}
         <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-1">
           <Filter size={14} className="text-gray-400 flex-shrink-0" />
           {filters.map((f) => (
@@ -129,60 +128,38 @@ export default function WatchlistPage() {
           </div>
         ) : (
           <>
-            {/* Movies */}
             {movies.length > 0 && (
               <section className="mb-8">
                 <div className="flex items-center gap-2 mb-3">
                   <Film size={16} className="text-rose-400" />
                   <h2 className="font-medium text-gray-600 text-sm">Movies</h2>
-                  <span className="bg-rose-100 text-rose-500 text-xs px-2 py-0.5 rounded-full">
-                    {movies.length}
-                  </span>
+                  <span className="bg-rose-100 text-rose-500 text-xs px-2 py-0.5 rounded-full">{movies.length}</span>
                 </div>
                 <div className="space-y-2">
                   {movies.map((item) => (
-                    <MovieCard
-                      key={item.id}
-                      item={item}
-                      onDelete={handleDelete}
-                      onMarkWatched={handleMarkWatched}
-                    />
+                    <MovieCard key={item.id} item={item} onDelete={handleDelete} onMarkWatched={handleMarkWatched} />
                   ))}
                 </div>
               </section>
             )}
-
-            {/* TV Shows */}
             {tvShows.length > 0 && (
               <section className="mb-8">
                 <div className="flex items-center gap-2 mb-3">
                   <Tv size={16} className="text-purple-400" />
-                  <h2 className="font-medium text-gray-600 text-sm">
-                    TV Shows
-                  </h2>
-                  <span className="bg-purple-100 text-purple-500 text-xs px-2 py-0.5 rounded-full">
-                    {tvShows.length}
-                  </span>
+                  <h2 className="font-medium text-gray-600 text-sm">TV Shows</h2>
+                  <span className="bg-purple-100 text-purple-500 text-xs px-2 py-0.5 rounded-full">{tvShows.length}</span>
                 </div>
                 <div className="space-y-2">
                   {tvShows.map((item) => (
-                    <MovieCard
-                      key={item.id}
-                      item={item}
-                      onDelete={handleDelete}
-                      onMarkWatched={handleMarkWatched}
-                    />
+                    <MovieCard key={item.id} item={item} onDelete={handleDelete} onMarkWatched={handleMarkWatched} />
                   ))}
                 </div>
               </section>
             )}
-
             {filtered.length === 0 && (
               <div className="text-center py-16">
                 <p className="text-4xl mb-3">🍿</p>
-                <p className="text-gray-400 text-sm">
-                  Nothing here yet — add your first title above!
-                </p>
+                <p className="text-gray-400 text-sm">Nothing here yet — add your first title above!</p>
               </div>
             )}
           </>
