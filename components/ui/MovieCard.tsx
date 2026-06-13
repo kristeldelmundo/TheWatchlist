@@ -12,6 +12,8 @@ interface Props {
 }
 
 export default function MovieCard({ item, onDelete, onMarkWatched }: Props) {
+  const initial = item.added_by.charAt(0);
+
   return (
     <div
       className={clsx(
@@ -75,18 +77,30 @@ export default function MovieCard({ item, onDelete, onMarkWatched }: Props) {
         )}
 
         <div className="flex items-center justify-between mt-2">
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5">
             <span
               className={clsx(
-                "w-5 h-5 rounded-full flex items-center justify-center text-xs font-semibold",
+                "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0",
                 item.added_by === "Kristel"
                   ? "bg-rose-100 text-rose-500"
                   : "bg-purple-100 text-purple-500",
               )}
             >
-              {item.added_by}
+              {initial}
             </span>
-            <span className="text-xs text-gray-400">added this</span>
+            <span className="text-xs text-gray-400">
+              <span
+                className={clsx(
+                  "font-medium",
+                  item.added_by === "Kristel"
+                    ? "text-rose-500"
+                    : "text-purple-500",
+                )}
+              >
+                {item.added_by}
+              </span>{" "}
+              added this
+            </span>
             {item.watched && (
               <span className="ml-1 text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full font-medium">
                 Watched ✓
