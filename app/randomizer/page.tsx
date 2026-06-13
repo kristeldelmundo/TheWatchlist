@@ -6,7 +6,16 @@ import { useRouter } from "next/navigation";
 import Navbar from "@/components/layout/Navbar";
 import { WatchlistItem } from "@/types";
 import { supabase } from "@/lib/supabase";
-import { Shuffle, CheckCircle, Star, RotateCcw, Film, Tv } from "lucide-react";
+import { fetchTrailerUrl } from "@/lib/tmdb";
+import {
+  Shuffle,
+  CheckCircle,
+  Star,
+  RotateCcw,
+  Film,
+  Tv,
+  Play,
+} from "lucide-react";
 import { clsx } from "clsx";
 import Popcorn from "@/components/ui/Popcorn";
 
@@ -39,6 +48,8 @@ export default function RandomizerPage() {
   const [filter, setFilter] = useState<Filter>("all");
   const [picked, setPicked] = useState(false);
   const [msgIdx, setMsgIdx] = useState(0);
+  const [trailerUrl, setTrailerUrl] = useState<string | null>(null);
+  const [loadingTrailer, setLoadingTrailer] = useState(false);
 
   useEffect(() => {
     supabase
@@ -76,6 +87,7 @@ export default function RandomizerPage() {
     setPicked(false);
     setPick(null);
     setMsgIdx(0);
+    setTrailerUrl(null);
 
     // Longer, suspenseful "cooking" time so the popcorn animation shines
     await new Promise((r) => setTimeout(r, 2600));
@@ -83,6 +95,12 @@ export default function RandomizerPage() {
     setPick(chosen);
     setSpinning(false);
     setPicked(true);
+
+    // Fetch the trailer link in the background
+    setLoadingTrailer(true);
+    const url = await fetchTrailerUrl(chosen.title, chosen.type, chosen.year);
+    setTrailerUrl(url);
+    setLoadingTrailer(false);
   }
 
   async function markWatched() {
@@ -94,6 +112,7 @@ export default function RandomizerPage() {
     setItems((prev) => prev.filter((i) => i.id !== pick.id));
     setPick(null);
     setPicked(false);
+    setTrailerUrl(null);
   }
 
   const filters: { value: Filter; label: string }[] = [
@@ -252,10 +271,26 @@ export default function RandomizerPage() {
               </div>
 
               {pick.plot && (
-                <p className="text-sm text-gray-500 leading-relaxed max-w-xs mx-auto">
+                <p className="text-sm text-gray-500 leading-relaxed max-w-xs mx-auto mb-4">
                   {pick.plot}
                 </p>
               )}
+
+              {/* Watch Trailer button */}
+              <a
+                href={trailerUrl || undefined}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={clsx(
+                  "inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium transition-all",
+                  trailerUrl
+                    ? "bg-red-500 hover:bg-red-600 text-white hover:scale-105 shadow-md shadow-red-200"
+                    : "bg-gray-100 text-gray-400 cursor-wait pointer-events-none",
+                )}
+              >
+                <Play size={16} fill="currentColor" />
+                {loadingTrailer ? "Finding trailer..." : "Watch Trailer"}
+              </a>
             </div>
           )}
         </div>
