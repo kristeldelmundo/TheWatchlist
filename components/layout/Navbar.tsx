@@ -2,11 +2,12 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Film, Shuffle, Star, Heart } from 'lucide-react'
+import { Film, Shuffle, Star, Heart, TrendingUp } from 'lucide-react'
 import { clsx } from 'clsx'
 
 const navItems = [
   { href: '/watchlist', label: 'Watchlist', icon: Film },
+  { href: '/trending', label: 'Trending', icon: TrendingUp },
   { href: '/randomizer', label: 'Pick for us!', icon: Shuffle },
   { href: '/review', label: 'Rate & Share', icon: Star },
 ]
