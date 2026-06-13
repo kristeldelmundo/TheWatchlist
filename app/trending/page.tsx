@@ -15,33 +15,30 @@ import { clsx } from "clsx";
 
 type Tab = "movie" | "tv";
 
+const VISIBLE = 10; // how many to show at once
+
 export default function TrendingPage() {
   const [tab, setTab] = useState<Tab>("movie");
   const [movies, setMovies] = useState<TrendingItem[]>([]);
   const [shows, setShows] = useState<TrendingItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [who, setWho] = useState<WatchlistUser>("Kristel");
-  // Track which items were just added (by tmdb id) and by whom
-  const [added, setAdded] = useState<Record<number, WatchlistUser>>({});
+  // ids that have been added/removed so they drop out and the next slides up
+  const [removedIds, setRemovedIds] = useState<Set<number>>(new Set());
   const [existingTitles, setExistingTitles] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    Promise.all([fetchTrendingMovies(), fetchTrendingTV()]).then(
-      ([m, t]) => {
-        setMovies(m);
-        setShows(t);
-        setLoading(false);
-      },
-    );
-    // Load existing watchlist titles so we can show what's already added
+    Promise.all([fetchTrendingMovies(), fetchTrendingTV()]).then(([m, t]) => {
+      setMovies(m);
+      setShows(t);
+      setLoading(false);
+    });
     supabase
       .from("watchlist_items")
       .select("title")
       .then(({ data }) => {
         if (data) {
-          setExistingTitles(
-            new Set(data.map((d) => d.title.toLowerCase())),
-          );
+          setExistingTitles(new Set(data.map((d) => d.title.toLowerCase())));
         }
       });
   }, []);
@@ -60,14 +57,17 @@ export default function TrendingPage() {
     };
     const { error } = await supabase.from("watchlist_items").insert(newItem);
     if (!error) {
-      setAdded((prev) => ({ ...prev, [item.id]: who }));
-      setExistingTitles((prev) =>
-        new Set(prev).add(item.title.toLowerCase()),
-      );
+      setExistingTitles((prev) => new Set(prev).add(item.title.toLowerCase()));
+      // Remove it after a short beat so the user sees the "added" tick, then it slides out
+      setTimeout(() => {
+        setRemovedIds((prev) => new Set(prev).add(item.id));
+      }, 700);
     }
   }
 
-  const list = tab === "movie" ? movies : shows;
+  const fullPool = tab === "movie" ? movies : shows;
+  // Drop removed ones, then take the top 10 — the next trending title fills the gap
+  const list = fullPool.filter((i) => !removedIds.has(i.id)).slice(0, VISIBLE);
   const noKey = !loading && movies.length === 0 && shows.length === 0;
 
   return (
@@ -180,14 +180,13 @@ export default function TrendingPage() {
         ) : (
           <div className="space-y-3">
             {list.map((item, idx) => {
-              const isAdded =
-                added[item.id] ||
-                existingTitles.has(item.title.toLowerCase());
-              const addedBy = added[item.id];
+              const alreadyOnList = existingTitles.has(
+                item.title.toLowerCase(),
+              );
               return (
                 <div
                   key={item.id}
-                  className="glass rounded-2xl p-3 flex gap-3 items-center hover:shadow-lg hover:shadow-rose-100 transition-all"
+                  className="glass rounded-2xl p-3 flex gap-3 items-center hover:shadow-lg hover:shadow-rose-100 transition-all burst"
                 >
                   {/* Rank number */}
                   <div className="flex-shrink-0 w-8 text-center">
@@ -237,17 +236,16 @@ export default function TrendingPage() {
 
                   {/* Add button */}
                   <div className="flex-shrink-0">
-                    {isAdded ? (
+                    {alreadyOnList ? (
                       <div
                         className={clsx(
                           "flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-medium",
-                          addedBy === "Eric"
+                          who === "Eric"
                             ? "bg-purple-100 text-purple-600"
                             : "bg-rose-100 text-rose-600",
                         )}
                       >
-                        <Check size={14} />
-                        {addedBy ? `${addedBy.charAt(0)} added` : "On list"}
+                        <Check size={14} /> Added
                       </div>
                     ) : (
                       <button
@@ -266,6 +264,15 @@ export default function TrendingPage() {
                 </div>
               );
             })}
+
+            {list.length === 0 && !noKey && (
+              <div className="text-center py-16">
+                <p className="text-4xl mb-3">🍿</p>
+                <p className="text-gray-400 text-sm">
+                  You&apos;ve added them all! Check back next week for fresh trending picks.
+                </p>
+              </div>
+            )}
           </div>
         )}
       </main>
