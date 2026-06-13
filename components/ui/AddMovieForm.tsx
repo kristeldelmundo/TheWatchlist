@@ -9,6 +9,11 @@ interface Props {
   onAdd: (title: string, type: MediaType, who: WatchlistUser) => Promise<void>
 }
 
+const USERS: { value: WatchlistUser; initial: string; label: string }[] = [
+  { value: 'Kristel', initial: 'K', label: 'Kristel' },
+  { value: 'Eric', initial: 'E', label: 'Eric' },
+]
+
 export default function AddMovieForm({ onAdd }: Props) {
   const [title, setTitle] = useState('')
   const [type, setType] = useState<MediaType>('movie')
@@ -28,21 +33,27 @@ export default function AddMovieForm({ onAdd }: Props) {
     <form onSubmit={handleSubmit} className="glass rounded-2xl p-4 mb-6">
       <div className="flex items-center gap-2 mb-3">
         <span className="text-sm font-medium text-gray-600">Adding as:</span>
-        {(['Kristel', 'Eric'] as WatchlistUser[]).map(u => (
+        {USERS.map(u => (
           <button
-            key={u}
+            key={u.value}
             type="button"
-            onClick={() => setWho(u)}
+            onClick={() => setWho(u.value)}
             className={clsx(
-              'w-8 h-8 rounded-full text-sm font-semibold transition-all',
-              who === u
-                ? u === 'Kristel'
-                  ? 'bg-rose-500 text-white scale-110 shadow-md shadow-rose-200'
-                  : 'bg-purple-500 text-white scale-110 shadow-md shadow-purple-200'
+              'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold transition-all',
+              who === u.value
+                ? u.value === 'Kristel'
+                  ? 'bg-rose-500 text-white scale-105 shadow-md shadow-rose-200'
+                  : 'bg-purple-500 text-white scale-105 shadow-md shadow-purple-200'
                 : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
             )}
           >
-            {u}
+            <span className={clsx(
+              'w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold',
+              who === u.value ? 'bg-white/30' : 'bg-gray-200'
+            )}>
+              {u.initial}
+            </span>
+            {u.label}
           </button>
         ))}
       </div>
