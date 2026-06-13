@@ -74,7 +74,13 @@ export default function AddMovieForm({ onAdd }: Props) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="glass rounded-2xl p-4 mb-6">
+    <form
+      onSubmit={handleSubmit}
+      className={clsx(
+        'glass rounded-2xl p-4 mb-6 relative',
+        showDropdown && suggestions.length > 0 ? 'z-50' : 'z-10',
+      )}
+    >
       <div className="flex items-center gap-2 mb-3">
         <span className="text-sm font-medium text-gray-600">Adding as:</span>
         {USERS.map(u => (
@@ -121,15 +127,15 @@ export default function AddMovieForm({ onAdd }: Props) {
 
           {/* Suggestions dropdown */}
           {showDropdown && suggestions.length > 0 && (
-            <div className="absolute z-20 left-0 right-0 mt-1 bg-white rounded-xl border border-rose-100 shadow-xl shadow-rose-100/50 overflow-hidden max-h-80 overflow-y-auto">
+            <div className="absolute z-50 left-0 right-0 mt-1 bg-white rounded-xl border border-rose-100 shadow-2xl shadow-rose-200/60 overflow-hidden max-h-80 overflow-y-auto">
               {suggestions.map(s => (
                 <button
                   key={s.imdbID}
                   type="button"
                   onClick={() => pickSuggestion(s)}
-                  className="w-full flex items-center gap-3 px-3 py-2 hover:bg-rose-50 transition-colors text-left border-b border-rose-50 last:border-0"
+                  className="w-full flex items-center gap-3 px-3 py-2 hover:bg-rose-50 transition-colors text-left border-b border-rose-50 last:border-0 bg-white"
                 >
-                  <div className="w-9 h-13 rounded-md overflow-hidden flex-shrink-0 bg-rose-50 flex items-center justify-center" style={{ height: '52px' }}>
+                  <div className="rounded-md overflow-hidden flex-shrink-0 bg-rose-50 flex items-center justify-center" style={{ width: '36px', height: '52px' }}>
                     {s.Poster && s.Poster !== 'N/A' ? (
                       <Image src={s.Poster} alt={s.Title} width={36} height={52} className="w-full h-full object-cover" />
                     ) : (
