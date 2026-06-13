@@ -12,6 +12,9 @@ import { clsx } from "clsx";
 
 type FilterType = "all" | "movie" | "tv" | "Kristel" | "Eric" | "unwatched";
 
+// Result returned to the add form so it can show feedback
+export type AddResult = { ok: boolean; duplicate?: boolean; title?: string };
+
 const SUBTITLES = [
   "ready to pop",
   "movie nights waiting",
@@ -52,13 +55,26 @@ export default function WatchlistPage() {
     type: MediaType,
     who: WatchlistUser,
     imdbID?: string,
-  ) {
+  ): Promise<AddResult> {
     // If we have an exact imdbID (picked from suggestions), fetch by ID for accuracy.
     const info = imdbID
       ? await fetchMovieById(imdbID)
       : await fetchMovieInfo(title, type);
+
+    const finalTitle = info?.Title || title;
+
+    // Duplicate check — case-insensitive title + same type already on the list
+    const isDuplicate = items.some(
+      (i) =>
+        i.title.toLowerCase().trim() === finalTitle.toLowerCase().trim() &&
+        i.type === type,
+    );
+    if (isDuplicate) {
+      return { ok: false, duplicate: true, title: finalTitle };
+    }
+
     const newItem = {
-      title: info?.Title || title,
+      title: finalTitle,
       type,
       added_by: who,
       poster: info?.Poster && info.Poster !== "N/A" ? info.Poster : null,
@@ -73,7 +89,11 @@ export default function WatchlistPage() {
       .insert(newItem)
       .select()
       .single();
-    if (data) setItems((prev) => [data, ...prev]);
+    if (data) {
+      setItems((prev) => [data, ...prev]);
+      return { ok: true, title: finalTitle };
+    }
+    return { ok: false };
   }
 
   async function handleDelete(id: string) {
