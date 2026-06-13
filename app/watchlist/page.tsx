@@ -6,7 +6,7 @@ import MovieCard from "@/components/ui/MovieCard";
 import AddMovieForm from "@/components/ui/AddMovieForm";
 import { WatchlistItem, MediaType, WatchlistUser } from "@/types";
 import { supabase } from "@/lib/supabase";
-import { fetchMovieInfo } from "@/lib/omdb";
+import { fetchMovieInfo, fetchMovieById } from "@/lib/omdb";
 import { Film, Tv, Filter } from "lucide-react";
 import { clsx } from "clsx";
 
@@ -30,14 +30,22 @@ export default function WatchlistPage() {
     setLoading(false);
   }
 
-  async function handleAdd(title: string, type: MediaType, who: WatchlistUser) {
-    const info = await fetchMovieInfo(title, type);
+  async function handleAdd(
+    title: string,
+    type: MediaType,
+    who: WatchlistUser,
+    imdbID?: string,
+  ) {
+    // If we have an exact imdbID (picked from suggestions), fetch by ID for accuracy.
+    const info = imdbID
+      ? await fetchMovieById(imdbID)
+      : await fetchMovieInfo(title, type);
     const newItem = {
       title: info?.Title || title,
       type,
       added_by: who,
-      poster: info?.Poster !== "N/A" ? info?.Poster || null : null,
-      plot: info?.Plot !== "N/A" ? info?.Plot || null : null,
+      poster: info?.Poster && info.Poster !== "N/A" ? info.Poster : null,
+      plot: info?.Plot && info.Plot !== "N/A" ? info.Plot : null,
       year: info?.Year || null,
       genre: info?.Genre || null,
       rating: info?.imdbRating || null,
