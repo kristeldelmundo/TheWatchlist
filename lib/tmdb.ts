@@ -70,6 +70,68 @@ export async function fetchTrendingTV(): Promise<TrendingItem[]> {
   return fetchTrendingPool('tv')
 }
 
+interface TmdbVideo {
+  key: string
+  site: string
+  type: string
+  official: boolean
+}
+
+// Pick the best YouTube trailer from a list of videos
+function bestTrailer(videos: TmdbVideo[]): string | null {
+  const yt = videos.filter((v) => v.site === 'YouTube')
+  if (!yt.length) return null
+  // Prefer an official Trailer, then any Trailer, then any Teaser, else first
+  const pick =
+    yt.find((v) => v.type === 'Trailer' && v.official) ||
+    yt.find((v) => v.type === 'Trailer') ||
+    yt.find((v) => v.type === 'Teaser') ||
+    yt[0]
+  return pick ? `https://www.youtube.com/watch?v=${pick.key}` : null
+}
+
+// Search TMDB by title, then fetch that title's trailer (YouTube link).
+// Falls back to a YouTube search URL if no exact trailer is found.
+export async function fetchTrailerUrl(
+  title: string,
+  type: 'movie' | 'tv',
+  year?: string | null,
+): Promise<string> {
+  const ytSearch = `https://www.youtube.com/results?search_query=${encodeURIComponent(
+    `${title} ${year || ''} trailer`,
+  )}`
+
+  if (!TMDB_API_KEY) return ytSearch
+
+  try {
+    // 1. Find the TMDB id for this title
+    const searchRes = await fetch(
+      `${TMDB_BASE}/search/${type}?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(
+        title,
+      )}`,
+    )
+    const searchData = await searchRes.json()
+    const match =
+      Array.isArray(searchData.results) && searchData.results.length
+        ? searchData.results[0]
+        : null
+    if (!match) return ytSearch
+
+    // 2. Fetch its videos
+    const vidRes = await fetch(
+      `${TMDB_BASE}/${type}/${match.id}/videos?api_key=${TMDB_API_KEY}`,
+    )
+    const vidData = await vidRes.json()
+    const url = Array.isArray(vidData.results)
+      ? bestTrailer(vidData.results)
+      : null
+
+    return url || ytSearch
+  } catch {
+    return ytSearch
+  }
+}
+
 // Convert a trending item into the shape used by our watchlist
 export function trendingToWatchlistItem(t: TrendingItem): Partial<OMDBMovie> & {
   title: string
