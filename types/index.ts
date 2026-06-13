@@ -1,4 +1,4 @@
-export type WatchlistUser = 'K' | 'J'
+export type WatchlistUser = 'Kristel' | 'Eric'
 
 export type MediaType = 'movie' | 'tv'
 
