@@ -11,6 +11,25 @@ import { clsx } from "clsx";
 
 type Filter = "all" | "movie" | "tv" | "Kristel" | "Eric";
 
+// Fun messages that cycle while the popcorn is "cooking"
+const COOKING_MESSAGES = [
+  "Heating up the kettle...",
+  "Buttering the picks...",
+  "Shaking the kernels...",
+  "Almost popping...",
+  "Picking the tastiest one...",
+];
+
+// Kernel emojis + horizontal offsets so they pop in different directions
+const KERNELS = [
+  { emoji: "🍿", x: "-50px", delay: "0s" },
+  { emoji: "🍿", x: "40px", delay: "0.15s" },
+  { emoji: "🍿", x: "-20px", delay: "0.3s" },
+  { emoji: "🍿", x: "55px", delay: "0.45s" },
+  { emoji: "🍿", x: "-60px", delay: "0.6s" },
+  { emoji: "🍿", x: "15px", delay: "0.75s" },
+];
+
 export default function RandomizerPage() {
   const router = useRouter();
   const [items, setItems] = useState<WatchlistItem[]>([]);
@@ -18,6 +37,7 @@ export default function RandomizerPage() {
   const [spinning, setSpinning] = useState(false);
   const [filter, setFilter] = useState<Filter>("all");
   const [picked, setPicked] = useState(false);
+  const [msgIdx, setMsgIdx] = useState(0);
 
   useEffect(() => {
     supabase
@@ -28,6 +48,15 @@ export default function RandomizerPage() {
         if (data) setItems(data);
       });
   }, []);
+
+  // Cycle the cooking messages while spinning
+  useEffect(() => {
+    if (!spinning) return;
+    const timer = setInterval(() => {
+      setMsgIdx((i) => (i + 1) % COOKING_MESSAGES.length);
+    }, 500);
+    return () => clearInterval(timer);
+  }, [spinning]);
 
   function getPool() {
     return items.filter((i) => {
@@ -45,8 +74,10 @@ export default function RandomizerPage() {
     setSpinning(true);
     setPicked(false);
     setPick(null);
+    setMsgIdx(0);
 
-    await new Promise((r) => setTimeout(r, 600));
+    // Longer, suspenseful "cooking" time so the popcorn animation shines
+    await new Promise((r) => setTimeout(r, 2600));
     const chosen = pool[Math.floor(Math.random() * pool.length)];
     setPick(chosen);
     setSpinning(false);
@@ -80,7 +111,7 @@ export default function RandomizerPage() {
       <main className="max-w-lg mx-auto px-4 py-10 text-center">
         <div className="mb-8">
           <h1 className="font-display text-3xl font-bold text-gray-800 mb-2">
-            <span className="gradient-text italic">Pick for us!</span>
+            <span className="gradient-text italic">Pick for us!</span> 🍿
           </h1>
           <p className="text-sm text-gray-400">
             {pool.length} titles in the pool
@@ -109,7 +140,6 @@ export default function RandomizerPage() {
         <div
           className={clsx(
             "glass rounded-3xl p-8 mb-6 min-h-64 flex flex-col items-center justify-center transition-all",
-            spinning && "roulette",
             picked && "shadow-xl shadow-rose-100",
           )}
         >
@@ -120,16 +150,38 @@ export default function RandomizerPage() {
             </div>
           )}
 
+          {/* Popcorn cooking loader */}
           {spinning && (
-            <div className="animate-pulse">
-              <div className="w-20 h-28 rounded-xl shimmer mx-auto mb-4" />
-              <div className="h-4 w-32 rounded shimmer mx-auto" />
+            <div className="flex flex-col items-center">
+              <div className="relative w-40 h-32 flex items-end justify-center">
+                {/* Popping kernels */}
+                {KERNELS.map((k, i) => (
+                  <span
+                    key={i}
+                    className="kernel"
+                    style={
+                      {
+                        "--pop-x": k.x,
+                        animationDelay: k.delay,
+                      } as React.CSSProperties
+                    }
+                  >
+                    {k.emoji}
+                  </span>
+                ))}
+
+                {/* The pot / kettle */}
+                <div className="pot-shake relative z-10 text-6xl">🍲</div>
+              </div>
+              <p className="text-sm text-rose-400 font-medium mt-4 transition-all duration-300">
+                {COOKING_MESSAGES[msgIdx]}
+              </p>
             </div>
           )}
 
           {pick && !spinning && (
-            <div className="animate-[pop_0.3s_cubic-bezier(0.175,0.885,0.32,1.275)]">
-              <div className="w-24 h-36 rounded-2xl overflow-hidden mx-auto mb-4 shadow-lg">
+            <div className="burst">
+              <div className="w-24 h-36 rounded-2xl overflow-hidden mx-auto mb-4 shadow-lg title-bob">
                 {pick.poster ? (
                   <Image
                     src={pick.poster}
@@ -149,10 +201,13 @@ export default function RandomizerPage() {
                 )}
               </div>
 
+              <p className="text-xs text-rose-400 font-medium mb-1">
+                🍿 tonight you&apos;re watching
+              </p>
               <h2 className="font-display text-2xl font-bold text-gray-800 mb-1">
                 {pick.title}
               </h2>
-              <div className="flex items-center justify-center gap-2 mb-3">
+              <div className="flex items-center justify-center gap-2 mb-3 flex-wrap">
                 <span
                   className={clsx(
                     "text-xs px-2 py-0.5 rounded-full",
@@ -169,15 +224,18 @@ export default function RandomizerPage() {
                     ★ {pick.rating}
                   </span>
                 )}
-                <span
-                  className={clsx(
-                    "w-5 h-5 rounded-full flex items-center justify-center text-xs font-semibold",
-                    pick.added_by === "Kristel"
-                      ? "bg-rose-100 text-rose-500"
-                      : "bg-purple-100 text-purple-500",
-                  )}
-                >
-                  {pick.added_by}
+                <span className="flex items-center gap-1">
+                  <span
+                    className={clsx(
+                      "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold",
+                      pick.added_by === "Kristel"
+                        ? "bg-rose-100 text-rose-500"
+                        : "bg-purple-100 text-purple-500",
+                    )}
+                  >
+                    {pick.added_by.charAt(0)}
+                  </span>
+                  <span className="text-xs text-gray-400">{pick.added_by}</span>
                 </span>
               </div>
 
@@ -198,10 +256,10 @@ export default function RandomizerPage() {
         >
           <Shuffle size={20} />
           {spinning
-            ? "Picking..."
+            ? "Popping..."
             : pick
-              ? "Pick again!"
-              : "Pick tonight's watch!"}
+              ? "Pop again!"
+              : "Pop something on tonight!"}
         </button>
 
         {/* Post-pick actions */}
