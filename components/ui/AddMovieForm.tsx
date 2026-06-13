@@ -2,13 +2,20 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
-import { Plus, Loader2, Search, Film, Tv } from 'lucide-react'
+import { Plus, Loader2, Search, Film, Tv, AlertCircle, Check } from 'lucide-react'
 import { WatchlistUser, MediaType, OMDBSearchResult } from '@/types'
 import { searchMovies } from '@/lib/omdb'
 import { clsx } from 'clsx'
 
+type AddResult = { ok: boolean; duplicate?: boolean; title?: string }
+
 interface Props {
-  onAdd: (title: string, type: MediaType, who: WatchlistUser, imdbID?: string) => Promise<void>
+  onAdd: (
+    title: string,
+    type: MediaType,
+    who: WatchlistUser,
+    imdbID?: string,
+  ) => Promise<AddResult | void>
 }
 
 const USERS: { value: WatchlistUser; initial: string; label: string }[] = [
@@ -16,11 +23,14 @@ const USERS: { value: WatchlistUser; initial: string; label: string }[] = [
   { value: 'Eric', initial: 'E', label: 'Eric' },
 ]
 
+type Feedback = { kind: 'added' | 'duplicate'; title: string } | null
+
 export default function AddMovieForm({ onAdd }: Props) {
   const [title, setTitle] = useState('')
   const [type, setType] = useState<MediaType>('movie')
   const [who, setWho] = useState<WatchlistUser>('Kristel')
   const [loading, setLoading] = useState(false)
+  const [feedback, setFeedback] = useState<Feedback>(null)
 
   const [suggestions, setSuggestions] = useState<OMDBSearchResult[]>([])
   const [searching, setSearching] = useState(false)
@@ -54,13 +64,24 @@ export default function AddMovieForm({ onAdd }: Props) {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
+  function showFeedback(result: AddResult | void) {
+    if (result && result.duplicate) {
+      setFeedback({ kind: 'duplicate', title: result.title || '' })
+    } else if (result && result.ok) {
+      setFeedback({ kind: 'added', title: result.title || '' })
+    }
+    // Auto-hide after a few seconds
+    setTimeout(() => setFeedback(null), 4000)
+  }
+
   async function pickSuggestion(s: OMDBSearchResult) {
     setShowDropdown(false)
     setTitle('')
     setSuggestions([])
     setLoading(true)
-    await onAdd(s.Title, type, who, s.imdbID)
+    const result = await onAdd(s.Title, type, who, s.imdbID)
     setLoading(false)
+    showFeedback(result)
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -68,9 +89,10 @@ export default function AddMovieForm({ onAdd }: Props) {
     if (!title.trim() || loading) return
     setShowDropdown(false)
     setLoading(true)
-    await onAdd(title.trim(), type, who)
-    setTitle('')
+    const result = await onAdd(title.trim(), type, who)
     setLoading(false)
+    showFeedback(result)
+    if (result && result.ok) setTitle('')
   }
 
   return (
@@ -171,7 +193,38 @@ export default function AddMovieForm({ onAdd }: Props) {
         {loading ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
         {loading ? 'Adding...' : 'Add to Watchlist'}
       </button>
-      <p className="text-xs text-gray-300 text-center mt-2">Pick a suggestion above, or type a full title and hit add</p>
+
+      {/* Feedback banner */}
+      {feedback && (
+        <div
+          className={clsx(
+            'flex items-center gap-2 mt-3 px-3 py-2 rounded-xl text-xs font-medium burst',
+            feedback.kind === 'duplicate'
+              ? 'bg-amber-50 text-amber-700 border border-amber-200'
+              : 'bg-green-50 text-green-700 border border-green-200',
+          )}
+        >
+          {feedback.kind === 'duplicate' ? (
+            <>
+              <AlertCircle size={15} className="flex-shrink-0" />
+              <span>
+                <strong>{feedback.title}</strong> is already on your watchlist! 🍿
+              </span>
+            </>
+          ) : (
+            <>
+              <Check size={15} className="flex-shrink-0" />
+              <span>
+                Added <strong>{feedback.title}</strong> to your watchlist!
+              </span>
+            </>
+          )}
+        </div>
+      )}
+
+      {!feedback && (
+        <p className="text-xs text-gray-300 text-center mt-2">Pick a suggestion above, or type a full title and hit add</p>
+      )}
     </form>
   )
 }
