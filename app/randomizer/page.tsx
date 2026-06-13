@@ -8,6 +8,7 @@ import { WatchlistItem } from "@/types";
 import { supabase } from "@/lib/supabase";
 import { Shuffle, CheckCircle, Star, RotateCcw, Film, Tv } from "lucide-react";
 import { clsx } from "clsx";
+import Popcorn from "@/components/ui/Popcorn";
 
 type Filter = "all" | "movie" | "tv" | "Kristel" | "Eric";
 
@@ -20,14 +21,14 @@ const COOKING_MESSAGES = [
   "Picking the tastiest one...",
 ];
 
-// Kernel emojis + horizontal offsets so they pop in different directions
+// Popcorn pieces + horizontal offsets/sizes so they pop in different directions
 const KERNELS = [
-  { emoji: "🍿", x: "-50px", delay: "0s" },
-  { emoji: "🍿", x: "40px", delay: "0.15s" },
-  { emoji: "🍿", x: "-20px", delay: "0.3s" },
-  { emoji: "🍿", x: "55px", delay: "0.45s" },
-  { emoji: "🍿", x: "-60px", delay: "0.6s" },
-  { emoji: "🍿", x: "15px", delay: "0.75s" },
+  { x: "-55px", delay: "0s", size: 34 },
+  { x: "45px", delay: "0.15s", size: 40 },
+  { x: "-25px", delay: "0.3s", size: 30 },
+  { x: "60px", delay: "0.45s", size: 36 },
+  { x: "-65px", delay: "0.6s", size: 32 },
+  { x: "20px", delay: "0.75s", size: 38 },
 ];
 
 export default function RandomizerPage() {
@@ -153,8 +154,8 @@ export default function RandomizerPage() {
           {/* Popcorn cooking loader */}
           {spinning && (
             <div className="flex flex-col items-center">
-              <div className="relative w-40 h-32 flex items-end justify-center">
-                {/* Popping kernels */}
+              <div className="relative w-44 h-36 flex items-end justify-center">
+                {/* Popping popcorn pieces */}
                 {KERNELS.map((k, i) => (
                   <span
                     key={i}
@@ -166,12 +167,23 @@ export default function RandomizerPage() {
                       } as React.CSSProperties
                     }
                   >
-                    {k.emoji}
+                    <Popcorn size={k.size} />
                   </span>
                 ))}
 
-                {/* The pot / kettle */}
-                <div className="pot-shake relative z-10 text-6xl">🍲</div>
+                {/* Striped popcorn box */}
+                <div className="pot-shake relative z-10">
+                  <svg width="84" height="80" viewBox="0 0 84 80" xmlns="http://www.w3.org/2000/svg">
+                    {/* Box body (trapezoid) */}
+                    <path d="M14 26 L70 26 L62 78 L22 78 Z" fill="#f43f72" />
+                    {/* White stripes */}
+                    <path d="M26 26 L31 26 L25 78 L20.5 78 Z" fill="#ffffff" opacity="0.9" />
+                    <path d="M40 26 L45 26 L43 78 L38 78 Z" fill="#ffffff" opacity="0.9" />
+                    <path d="M54 26 L59 26 L61 78 L56 78 Z" fill="#ffffff" opacity="0.9" />
+                    {/* Rim */}
+                    <rect x="10" y="20" width="64" height="9" rx="3" fill="#be1246" />
+                  </svg>
+                </div>
               </div>
               <p className="text-sm text-rose-400 font-medium mt-4 transition-all duration-300">
                 {COOKING_MESSAGES[msgIdx]}
