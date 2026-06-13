@@ -23,9 +23,10 @@ export default function TrendingPage() {
   const [shows, setShows] = useState<TrendingItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [who, setWho] = useState<WatchlistUser>("Kristel");
-  // ids that have been added/removed so they drop out and the next slides up
+  // ids that have been added so they drop out and the next slides up
   const [removedIds, setRemovedIds] = useState<Set<number>>(new Set());
-  const [existingTitles, setExistingTitles] = useState<Set<string>>(new Set());
+  // briefly show a tick on the item just added before it slides away
+  const [justAdded, setJustAdded] = useState<number | null>(null);
 
   useEffect(() => {
     Promise.all([fetchTrendingMovies(), fetchTrendingTV()]).then(([m, t]) => {
@@ -33,17 +34,12 @@ export default function TrendingPage() {
       setShows(t);
       setLoading(false);
     });
-    supabase
-      .from("watchlist_items")
-      .select("title")
-      .then(({ data }) => {
-        if (data) {
-          setExistingTitles(new Set(data.map((d) => d.title.toLowerCase())));
-        }
-      });
   }, []);
 
   async function addToWatchlist(item: TrendingItem) {
+    // Show the tick immediately
+    setJustAdded(item.id);
+
     const newItem = {
       title: item.title,
       type: item.type,
@@ -55,14 +51,14 @@ export default function TrendingPage() {
       rating: item.rating,
       watched: false,
     };
-    const { error } = await supabase.from("watchlist_items").insert(newItem);
-    if (!error) {
-      setExistingTitles((prev) => new Set(prev).add(item.title.toLowerCase()));
-      // Remove it after a short beat so the user sees the "added" tick, then it slides out
-      setTimeout(() => {
-        setRemovedIds((prev) => new Set(prev).add(item.id));
-      }, 700);
-    }
+    // Fire the insert (don't block the UI on it)
+    supabase.from("watchlist_items").insert(newItem).then(() => {});
+
+    // After a short beat, remove it so the next trending title slides up
+    setTimeout(() => {
+      setRemovedIds((prev) => new Set(prev).add(item.id));
+      setJustAdded(null);
+    }, 800);
   }
 
   const fullPool = tab === "movie" ? movies : shows;
@@ -180,13 +176,16 @@ export default function TrendingPage() {
         ) : (
           <div className="space-y-3">
             {list.map((item, idx) => {
-              const alreadyOnList = existingTitles.has(
-                item.title.toLowerCase(),
-              );
+              const added = justAdded === item.id;
               return (
                 <div
                   key={item.id}
-                  className="glass rounded-2xl p-3 flex gap-3 items-center hover:shadow-lg hover:shadow-rose-100 transition-all burst"
+                  className={clsx(
+                    "glass rounded-2xl p-3 flex gap-3 items-center transition-all burst",
+                    added
+                      ? "opacity-50 scale-95"
+                      : "hover:shadow-lg hover:shadow-rose-100",
+                  )}
                 >
                   {/* Rank number */}
                   <div className="flex-shrink-0 w-8 text-center">
@@ -236,7 +235,7 @@ export default function TrendingPage() {
 
                   {/* Add button */}
                   <div className="flex-shrink-0">
-                    {alreadyOnList ? (
+                    {added ? (
                       <div
                         className={clsx(
                           "flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-medium",
@@ -245,7 +244,7 @@ export default function TrendingPage() {
                             : "bg-rose-100 text-rose-600",
                         )}
                       >
-                        <Check size={14} /> Added
+                        <Check size={14} /> Added!
                       </div>
                     ) : (
                       <button
