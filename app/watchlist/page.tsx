@@ -9,6 +9,7 @@ import { supabase } from "@/lib/supabase";
 import { fetchMovieInfo, fetchMovieById } from "@/lib/omdb";
 import { Film, Tv, Filter } from "lucide-react";
 import { clsx } from "clsx";
+import RequireAuth from "@/components/auth/RequireAuth";
 
 type FilterType = "all" | "movie" | "tv" | "Kristel" | "Eric" | "unwatched";
 
@@ -23,7 +24,7 @@ const SUBTITLES = [
   "waiting for the couch",
 ];
 
-export default function WatchlistPage() {
+function WatchlistInner() {
   const [items, setItems] = useState<WatchlistItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterType>("all");
@@ -214,5 +215,13 @@ export default function WatchlistPage() {
         )}
       </main>
     </>
+  );
+}
+
+export default function WatchlistPage() {
+  return (
+    <RequireAuth>
+      <WatchlistInner />
+    </RequireAuth>
   );
 }
