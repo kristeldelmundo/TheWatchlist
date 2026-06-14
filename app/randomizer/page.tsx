@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { clsx } from "clsx";
 import Popcorn from "@/components/ui/Popcorn";
+import RequireAuth from "@/components/auth/RequireAuth";
 
 type Filter = "all" | "movie" | "tv" | "Kristel" | "Eric";
 
@@ -44,7 +45,7 @@ function youtubeSearchUrl(title: string, year?: string | null) {
   )}`;
 }
 
-export default function RandomizerPage() {
+function RandomizerInner() {
   const router = useRouter();
   const [items, setItems] = useState<WatchlistItem[]>([]);
   const [pick, setPick] = useState<WatchlistItem | null>(null);
@@ -345,5 +346,13 @@ export default function RandomizerPage() {
         )}
       </main>
     </>
+  );
+}
+
+export default function RandomizerPage() {
+  return (
+    <RequireAuth>
+      <RandomizerInner />
+    </RequireAuth>
   );
 }
