@@ -7,6 +7,7 @@ import { WatchlistItem, Review } from '@/types'
 import { supabase } from '@/lib/supabase'
 import { Star, Copy, Share2, Check, Film, Tv, Heart } from 'lucide-react'
 import { clsx } from 'clsx'
+import RequireAuth from '@/components/auth/RequireAuth'
 
 const REACTIONS = [
   { emoji: '😍', label: 'Obsessed' },
@@ -42,7 +43,7 @@ function StarRating({ value, onChange }: { value: number; onChange: (v: number) 
   )
 }
 
-export default function ReviewPage() {
+function ReviewInner() {
   const shareRef = useRef<HTMLDivElement>(null)
   const [items, setItems] = useState<WatchlistItem[]>([])
   const [pastReviews, setPastReviews] = useState<Review[]>([])
@@ -317,5 +318,13 @@ export default function ReviewPage() {
         )}
       </main>
     </>
+  )
+}
+
+export default function ReviewPage() {
+  return (
+    <RequireAuth>
+      <ReviewInner />
+    </RequireAuth>
   )
 }
