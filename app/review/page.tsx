@@ -5,7 +5,8 @@ import Image from 'next/image'
 import Navbar from '@/components/layout/Navbar'
 import { WatchlistItem, Review } from '@/types'
 import { supabase } from '@/lib/supabase'
-import { Star, Copy, Share2, Check, Film, Tv, Loader2 } from 'lucide-react'
+import { updateReview, deleteReview } from '@/lib/reviews'
+import { Star, Copy, Share2, Check, Film, Tv, Loader2, Pencil, Trash2, X } from 'lucide-react'
 import { clsx } from 'clsx'
 import RequireAuth from '@/components/auth/RequireAuth'
 import { useCircle } from '@/components/auth/CircleProvider'
@@ -68,7 +69,6 @@ function ReviewerAvatar({ name, avatar, accent, size = 7 }: { name: string; avat
   )
 }
 
-// Normalize any review row (new or legacy) into a list of displayable takes.
 interface Take {
   name: string
   accent: string | null
@@ -77,7 +77,6 @@ interface Take {
   thoughts: string
 }
 function takesFromReview(r: Review): Take[] {
-  // New model: a single reviewer per row.
   if (r.reviewer_name || r.rating != null || r.thoughts) {
     return [{
       name: r.reviewer_name || 'Someone',
@@ -87,7 +86,6 @@ function takesFromReview(r: Review): Take[] {
       thoughts: r.thoughts ?? '',
     }]
   }
-  // Legacy model: up to two fixed reviewers per row.
   const takes: Take[] = []
   if ((r.rating_k ?? 0) > 0 || r.thoughts_k) {
     takes.push({ name: 'Kristel', accent: 'rose', avatar: null, rating: r.rating_k ?? 0, thoughts: r.thoughts_k ?? '' })
@@ -105,7 +103,7 @@ function ReviewInner() {
   const [feed, setFeed] = useState<Review[]>([])
   const [loadingFeed, setLoadingFeed] = useState(true)
 
-  // Compose form
+  // Compose / edit form
   const [selectedId, setSelectedId] = useState('')
   const [rating, setRating] = useState(0)
   const [thoughts, setThoughts] = useState('')
@@ -113,6 +111,10 @@ function ReviewInner() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [copied, setCopied] = useState(false)
+  // When set, we're editing this existing review instead of posting a new one.
+  const [editingId, setEditingId] = useState<string | null>(null)
+  // Delete confirm
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const myName = profile?.display_name || user?.email?.split('@')[0] || 'You'
 
@@ -154,30 +156,68 @@ function ReviewInner() {
     setRating(0)
     setThoughts('')
     setReactions([])
+    setEditingId(null)
+  }
+
+  // Begin editing one of my own reviews — pre-fill the form and scroll up.
+  function startEdit(r: Review) {
+    setEditingId(r.id)
+    setSelectedId(r.watchlist_item_id)
+    setRating(r.rating ?? 0)
+    setThoughts(r.thoughts ?? '')
+    setReactions(r.reactions || [])
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   async function saveReview() {
     if (!selectedId || !activeCircle || !user) return
     setSaving(true)
-    const review = {
-      watchlist_item_id: selectedId,
-      circle_id: activeCircle.id,
-      title: selected?.title || '',
-      poster: selected?.poster || null,
-      reviewer_id: user.id,
-      reviewer_name: myName,
-      reviewer_avatar: profile?.avatar_url || null,
-      reviewer_accent: profile?.accent_color || 'rose',
-      rating,
-      thoughts,
-      reactions,
+
+    if (editingId) {
+      // Update existing review
+      const ok = await updateReview(editingId, { rating, thoughts, reactions })
+      if (ok) {
+        setFeed(prev =>
+          prev.map(r =>
+            r.id === editingId
+              ? { ...r, rating, thoughts, reactions, edited_at: new Date().toISOString() }
+              : r,
+          ),
+        )
+      }
+    } else {
+      // Create new review
+      const review = {
+        watchlist_item_id: selectedId,
+        circle_id: activeCircle.id,
+        title: selected?.title || '',
+        poster: selected?.poster || null,
+        reviewer_id: user.id,
+        reviewer_name: myName,
+        reviewer_avatar: profile?.avatar_url || null,
+        reviewer_accent: profile?.accent_color || 'rose',
+        rating,
+        thoughts,
+        reactions,
+      }
+      const { data } = await supabase.from('reviews').insert(review).select().single()
+      if (data) setFeed(prev => [data, ...prev])
     }
-    const { data } = await supabase.from('reviews').insert(review).select().single()
-    if (data) setFeed(prev => [data, ...prev])
+
     setSaving(false)
     setSaved(true)
     resetForm()
     setTimeout(() => setSaved(false), 3000)
+  }
+
+  async function confirmDelete(id: string) {
+    const ok = await deleteReview(id)
+    if (ok) {
+      setFeed(prev => prev.filter(r => r.id !== id))
+      // If we were editing the one we just deleted, reset the form.
+      if (editingId === id) resetForm()
+    }
+    setDeletingId(null)
   }
 
   async function copyShareText() {
@@ -219,6 +259,44 @@ function ReviewInner() {
   return (
     <>
       <Navbar />
+
+      {/* Delete confirm */}
+      {deletingId && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center px-4 bg-black/30 backdrop-blur-sm"
+          onClick={() => setDeletingId(null)}
+        >
+          <div
+            className="w-full max-w-xs bg-white rounded-3xl shadow-2xl shadow-rose-200/50 overflow-hidden burst"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="bg-gradient-to-br from-rose-100 to-purple-100 px-6 pt-7 pb-5 text-center">
+              <div className="text-5xl mb-1">🗑️</div>
+              <h2 className="font-display text-xl font-bold text-gray-800">Delete this review?</h2>
+            </div>
+            <div className="px-6 py-5">
+              <p className="text-sm text-gray-500 leading-relaxed text-center mb-5">
+                This will remove your review for good. You can always write a new one later!
+              </p>
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={() => confirmDelete(deletingId)}
+                  className="w-full bg-rose-500 hover:bg-rose-600 text-white font-medium py-3 rounded-2xl text-sm transition-all"
+                >
+                  Yes, delete it
+                </button>
+                <button
+                  onClick={() => setDeletingId(null)}
+                  className="w-full text-center text-xs text-gray-400 hover:text-gray-600 py-1.5 transition-colors"
+                >
+                  Never mind
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <main className="max-w-2xl mx-auto px-4 py-8">
         <div className="mb-6">
           <h1 className="font-display text-3xl font-bold text-gray-800 mb-1">
@@ -231,19 +309,33 @@ function ReviewInner() {
           </p>
         </div>
 
-        {/* Compose a review */}
-        <div className="glass rounded-2xl p-4 mb-4">
-          <label className="block text-xs font-medium text-gray-500 mb-2 uppercase tracking-wide">What did you watch?</label>
-          <select
-            value={selectedId}
-            onChange={e => setSelectedId(e.target.value)}
-            className="w-full bg-white/80 border border-rose-100 rounded-xl px-4 py-2.5 text-sm text-gray-700 outline-none focus:border-rose-300 cursor-pointer"
-          >
-            <option value="">Choose a movie or show...</option>
-            {items.map(i => (
-              <option key={i.id} value={i.id}>{i.title} ({i.type === 'tv' ? 'TV' : 'Movie'})</option>
-            ))}
-          </select>
+        {/* Compose / edit a review */}
+        <div className={clsx('glass rounded-2xl p-4 mb-4', editingId && 'ring-2 ring-rose-300')}>
+          {editingId ? (
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-medium text-rose-500 uppercase tracking-wide flex items-center gap-1">
+                <Pencil size={12} /> Editing your review
+              </span>
+              <button onClick={resetForm} className="text-gray-400 hover:text-gray-600" aria-label="Cancel edit">
+                <X size={16} />
+              </button>
+            </div>
+          ) : (
+            <label className="block text-xs font-medium text-gray-500 mb-2 uppercase tracking-wide">What did you watch?</label>
+          )}
+
+          {!editingId && (
+            <select
+              value={selectedId}
+              onChange={e => setSelectedId(e.target.value)}
+              className="w-full bg-white/80 border border-rose-100 rounded-xl px-4 py-2.5 text-sm text-gray-700 outline-none focus:border-rose-300 cursor-pointer"
+            >
+              <option value="">Choose a movie or show...</option>
+              {items.map(i => (
+                <option key={i.id} value={i.id}>{i.title} ({i.type === 'tv' ? 'TV' : 'Movie'})</option>
+              ))}
+            </select>
+          )}
 
           {selected && (
             <>
@@ -261,7 +353,6 @@ function ReviewInner() {
                 </div>
               </div>
 
-              {/* Your rating */}
               <div className="mt-4 flex items-center gap-2">
                 <ReviewerAvatar name={myName} avatar={profile?.avatar_url} accent={profile?.accent_color} size={7} />
                 <span className="text-sm font-medium text-gray-600">Your rating</span>
@@ -278,7 +369,6 @@ function ReviewInner() {
                 className="w-full mt-3 bg-white/60 border border-rose-100 rounded-xl px-3 py-2 text-sm text-gray-600 placeholder-gray-300 outline-none focus:border-rose-300 resize-none"
               />
 
-              {/* Reactions */}
               <label className="block text-xs font-medium text-gray-500 mt-4 mb-2 uppercase tracking-wide">Reactions</label>
               <div className="flex flex-wrap gap-2">
                 {REACTIONS.map(({ emoji, label }) => (
@@ -297,28 +387,39 @@ function ReviewInner() {
                 ))}
               </div>
 
-              {/* Share + Save */}
               <div className="flex gap-2 mt-4">
-                <button
-                  onClick={copyShareText}
-                  className="flex items-center justify-center gap-1.5 bg-white/80 border border-rose-100 hover:bg-rose-50 text-gray-600 px-3 py-2.5 rounded-xl text-xs font-medium transition-all"
-                >
-                  {copied ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
-                  {copied ? 'Copied!' : 'Copy'}
-                </button>
-                <button
-                  onClick={nativeShare}
-                  className="flex items-center justify-center gap-1.5 bg-white/80 border border-rose-100 hover:bg-rose-50 text-gray-600 px-3 py-2.5 rounded-xl text-xs font-medium transition-all"
-                >
-                  <Share2 size={14} /> Share
-                </button>
+                {!editingId && (
+                  <>
+                    <button
+                      onClick={copyShareText}
+                      className="flex items-center justify-center gap-1.5 bg-white/80 border border-rose-100 hover:bg-rose-50 text-gray-600 px-3 py-2.5 rounded-xl text-xs font-medium transition-all"
+                    >
+                      {copied ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
+                      {copied ? 'Copied!' : 'Copy'}
+                    </button>
+                    <button
+                      onClick={nativeShare}
+                      className="flex items-center justify-center gap-1.5 bg-white/80 border border-rose-100 hover:bg-rose-50 text-gray-600 px-3 py-2.5 rounded-xl text-xs font-medium transition-all"
+                    >
+                      <Share2 size={14} /> Share
+                    </button>
+                  </>
+                )}
                 <button
                   onClick={saveReview}
                   disabled={saving}
                   className="flex-1 flex items-center justify-center gap-2 bg-rose-500 hover:bg-rose-600 disabled:bg-rose-300 text-white font-medium py-2.5 rounded-xl text-sm transition-all"
                 >
-                  {saving ? <Loader2 size={16} className="animate-spin" /> : saved ? <><Check size={16} /> Posted!</> : <><Star size={16} /> Post review</>}
+                  {saving ? <Loader2 size={16} className="animate-spin" /> : saved ? <><Check size={16} /> {editingId ? 'Updated!' : 'Posted!'}</> : editingId ? <><Check size={16} /> Update review</> : <><Star size={16} /> Post review</>}
                 </button>
+                {editingId && (
+                  <button
+                    onClick={resetForm}
+                    className="px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:bg-gray-100 transition-all"
+                  >
+                    Cancel
+                  </button>
+                )}
               </div>
             </>
           )}
@@ -326,9 +427,7 @@ function ReviewInner() {
 
         {/* Everyone's reviews — latest first */}
         <section>
-          <h2 className="font-display text-xl font-bold text-gray-700 mb-4 italic">
-            Latest reviews
-          </h2>
+          <h2 className="font-display text-xl font-bold text-gray-700 mb-4 italic">Latest reviews</h2>
 
           {loadingFeed ? (
             <div className="space-y-3">
@@ -346,6 +445,7 @@ function ReviewInner() {
             <div className="space-y-3">
               {feed.map(r => {
                 const takes = takesFromReview(r)
+                const isMine = r.reviewer_id === user?.id
                 return (
                   <div key={r.id} className="glass rounded-2xl p-4 flex items-start gap-3">
                     {r.poster ? (
@@ -358,7 +458,9 @@ function ReviewInner() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-baseline justify-between gap-2">
                         <h4 className="font-medium text-gray-800 text-sm">{r.title}</h4>
-                        <span className="text-[11px] text-gray-300 flex-shrink-0">{timeAgo(r.created_at)}</span>
+                        <span className="text-[11px] text-gray-300 flex-shrink-0">
+                          {r.edited_at ? 'edited · ' : ''}{timeAgo(r.edited_at || r.created_at)}
+                        </span>
                       </div>
 
                       {r.reactions?.length > 0 && (
@@ -383,6 +485,24 @@ function ReviewInner() {
                           </div>
                         ))}
                       </div>
+
+                      {/* Edit / Delete — only on my own reviews */}
+                      {isMine && (
+                        <div className="flex items-center gap-3 mt-2.5">
+                          <button
+                            onClick={() => startEdit(r)}
+                            className="flex items-center gap-1 text-[11px] text-gray-400 hover:text-rose-500 transition-colors"
+                          >
+                            <Pencil size={11} /> Edit
+                          </button>
+                          <button
+                            onClick={() => setDeletingId(r.id)}
+                            className="flex items-center gap-1 text-[11px] text-gray-400 hover:text-red-500 transition-colors"
+                          >
+                            <Trash2 size={11} /> Delete
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )
