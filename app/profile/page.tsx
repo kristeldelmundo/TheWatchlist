@@ -311,9 +311,9 @@ function ProfileInner() {
   const nameColor = customTextColor || undefined
   const bodyColor = customTextColor || undefined
 
-  // Public share URL for this profile.
+  // Public share URL for this profile — pretty /@<id> form (rewritten to /u/[id]).
   const shareUrl = user
-    ? (typeof window !== 'undefined' ? `${window.location.origin}/u/${user.id}` : `https://cinepop.live/u/${user.id}`)
+    ? (typeof window !== 'undefined' ? `${window.location.origin}/@${user.id}` : `https://cinepop.live/@${user.id}`)
     : ''
 
   return (
