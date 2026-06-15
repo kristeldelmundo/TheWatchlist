@@ -11,6 +11,7 @@ import { clsx } from 'clsx'
 import RequireAuth from '@/components/auth/RequireAuth'
 import { useCircle } from '@/components/auth/CircleProvider'
 import { useAuth } from '@/components/auth/AuthProvider'
+import CuteSelect, { CuteOption } from '@/components/ui/CuteSelect'
 
 const REACTIONS = [
   { emoji: '😍', label: 'Obsessed' },
@@ -66,6 +67,20 @@ function ReviewerAvatar({ name, avatar, accent, size = 7 }: { name: string; avat
     >
       {name.charAt(0).toUpperCase()}
     </span>
+  )
+}
+
+// A small poster thumbnail used inside the picker options.
+function PosterThumb({ poster, type }: { poster: string | null; type: string }) {
+  return (
+    <div className="rounded-md overflow-hidden flex-shrink-0 bg-rose-50 flex items-center justify-center" style={{ width: '30px', height: '44px' }}>
+      {poster ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={poster} alt="" className="w-full h-full object-cover" />
+      ) : (
+        type === 'tv' ? <Tv size={13} className="text-rose-200" /> : <Film size={13} className="text-rose-200" />
+      )}
+    </div>
   )
 }
 
@@ -146,6 +161,24 @@ function ReviewInner() {
   }, [loadData])
 
   const selected = items.find(i => i.id === selectedId)
+
+  // Build poster-rich options for the picker.
+  const pickerOptions: CuteOption[] = items.map(i => ({
+    value: i.id,
+    label: i.title,
+    sublabel: i.year || undefined,
+    leading: <PosterThumb poster={i.poster} type={i.type} />,
+    trailing: (
+      <span
+        className={clsx(
+          'text-[10px] px-2 py-0.5 rounded-full font-medium flex-shrink-0',
+          i.type === 'movie' ? 'bg-rose-100 text-rose-600' : 'bg-purple-100 text-purple-600',
+        )}
+      >
+        {i.type === 'tv' ? 'TV' : 'Movie'}
+      </span>
+    ),
+  }))
 
   function toggleReaction(label: string) {
     setReactions(prev => prev.includes(label) ? prev.filter(r => r !== label) : [...prev, label])
@@ -325,16 +358,13 @@ function ReviewInner() {
           )}
 
           {!editingId && (
-            <select
+            <CuteSelect
+              variant="full"
               value={selectedId}
-              onChange={e => setSelectedId(e.target.value)}
-              className="w-full bg-white/80 border border-rose-100 rounded-xl px-4 py-2.5 text-sm text-gray-700 outline-none focus:border-rose-300 cursor-pointer"
-            >
-              <option value="">Choose a movie or show...</option>
-              {items.map(i => (
-                <option key={i.id} value={i.id}>{i.title} ({i.type === 'tv' ? 'TV' : 'Movie'})</option>
-              ))}
-            </select>
+              onChange={setSelectedId}
+              placeholder="Choose a movie or show…"
+              options={pickerOptions}
+            />
           )}
 
           {selected && (

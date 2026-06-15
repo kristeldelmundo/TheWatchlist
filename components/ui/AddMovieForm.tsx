@@ -6,6 +6,7 @@ import { Plus, Loader2, Search, Film, Tv, AlertCircle, Check } from 'lucide-reac
 import { MediaType, OMDBSearchResult } from '@/types'
 import { searchMovies } from '@/lib/omdb'
 import { clsx } from 'clsx'
+import CuteSelect from '@/components/ui/CuteSelect'
 
 type AddResult = { ok: boolean; duplicate?: boolean; title?: string }
 
@@ -154,14 +155,15 @@ export default function AddMovieForm({ onAdd, addingAs }: Props) {
           )}
         </div>
 
-        <select
+        <CuteSelect
+          variant="compact"
           value={type}
-          onChange={e => setType(e.target.value as MediaType)}
-          className="bg-white/80 border border-rose-100 rounded-xl px-3 py-2.5 text-sm text-gray-600 outline-none focus:border-rose-300 cursor-pointer"
-        >
-          <option value="movie">Movie</option>
-          <option value="tv">TV Show</option>
-        </select>
+          onChange={v => setType(v as MediaType)}
+          options={[
+            { value: 'movie', label: 'Movie', leading: <Film size={14} className="text-rose-400 flex-shrink-0" /> },
+            { value: 'tv', label: 'TV Show', leading: <Tv size={14} className="text-purple-400 flex-shrink-0" /> },
+          ]}
+        />
       </div>
 
       <button
@@ -170,7 +172,7 @@ export default function AddMovieForm({ onAdd, addingAs }: Props) {
         className="w-full flex items-center justify-center gap-2 bg-rose-500 hover:bg-rose-600 disabled:bg-rose-300 text-white font-medium py-2.5 rounded-xl text-sm transition-all"
       >
         {loading ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
-        {loading ? 'Adding...' : 'Add to Watchlist'}
+        {loading ? 'Adding...' : 'Add to Library'}
       </button>
 
       {/* Feedback banner */}
@@ -187,14 +189,14 @@ export default function AddMovieForm({ onAdd, addingAs }: Props) {
             <>
               <AlertCircle size={15} className="flex-shrink-0" />
               <span>
-                <strong>{feedback.title}</strong> is already on this watchlist! 🍿
+                <strong>{feedback.title}</strong> is already in this library! 🍿
               </span>
             </>
           ) : (
             <>
               <Check size={15} className="flex-shrink-0" />
               <span>
-                Added <strong>{feedback.title}</strong> to your watchlist!
+                Added <strong>{feedback.title}</strong> to your library!
               </span>
             </>
           )}
