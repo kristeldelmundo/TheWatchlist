@@ -342,8 +342,9 @@ function ReviewInner() {
           </p>
         </div>
 
-        {/* Compose / edit a review */}
-        <div className={clsx('glass rounded-2xl p-4 mb-4', editingId && 'ring-2 ring-rose-300')}>
+        {/* Compose / edit a review — relative + raised z so the open picker
+            floats above the reviews feed below it. */}
+        <div className={clsx('glass rounded-2xl p-4 mb-4 relative z-20', editingId && 'ring-2 ring-rose-300')}>
           {editingId ? (
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-medium text-rose-500 uppercase tracking-wide flex items-center gap-1">
@@ -360,6 +361,7 @@ function ReviewInner() {
           {!editingId && (
             <CuteSelect
               variant="full"
+              searchable
               value={selectedId}
               onChange={setSelectedId}
               placeholder="Choose a movie or show…"
@@ -456,7 +458,7 @@ function ReviewInner() {
         </div>
 
         {/* Everyone's reviews — latest first */}
-        <section>
+        <section className="relative z-10">
           <h2 className="font-display text-xl font-bold text-gray-700 mb-4 italic">Latest reviews</h2>
 
           {loadingFeed ? (
