@@ -55,6 +55,7 @@ function ProfileInner() {
   const [picks, setPicks] = useState<ProfilePicks>({})
 
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -65,12 +66,13 @@ function ProfileInner() {
   // Which pick slot's dropdown is currently open (so we can lift its card
   // above the following Bio card and stop the list being covered).
   const [openSlot, setOpenSlot] = useState<string | null>(null)
+  // True while the Now Watching picker is open (lift that card too).
+  const [nowOpen, setNowOpen] = useState(false)
 
   // Called by each pick CuteSelect when it opens/closes.
   function handleSlotOpenChange(slotKey: string, isOpen: boolean) {
     setOpenSlot(prev => {
       if (isOpen) return slotKey
-      // Only clear if this slot was the one marked open.
       return prev === slotKey ? null : prev
     })
   }
@@ -91,7 +93,7 @@ function ProfileInner() {
 
   useEffect(() => { hydrate() }, [hydrate])
 
-  // Library items for the pick pickers.
+  // Library items for the pickers.
   useEffect(() => {
     async function loadItems() {
       if (!activeCircle) { setItems([]); return }
@@ -178,21 +180,31 @@ function ProfileInner() {
     setPicks(prev => ({ ...prev, [slotKey]: pick }))
   }
 
+  // Set now-watching from a library item id (store the title), or clear it.
+  function setNowWatchingFromItem(itemId: string) {
+    if (!itemId) { setNowWatching(''); setNowStartedAt(null); return }
+    const item = items.find(i => i.id === itemId)
+    if (item) setNowWatching(item.title)
+  }
+
   function cancelEdit() {
     hydrate() // discard unsaved changes
     setOpenSlot(null)
+    setNowOpen(false)
+    setSaveError(null)
     setMode('view')
   }
 
   async function save() {
     if (!user) return
     setSaving(true)
+    setSaveError(null)
     const viewerType = deriveViewerType(genres, stats.avg)
     const startedAt =
       nowWatching.trim() && nowWatching.trim() !== (profile?.now_watching || '').trim()
         ? new Date().toISOString()
         : nowStartedAt
-    await supabase
+    const { error } = await supabase
       .from('profiles')
       .update({
         display_name: displayName,
@@ -208,10 +220,19 @@ function ProfileInner() {
         updated_at: new Date().toISOString(),
       })
       .eq('id', user.id)
+
+    if (error) {
+      // Surface the real reason instead of silently failing.
+      setSaveError(error.message || 'Could not save. Please try again.')
+      setSaving(false)
+      return
+    }
+
     await refreshProfile()
     setNowStartedAt(nowWatching.trim() ? startedAt : null)
     setSaving(false)
     setOpenSlot(null)
+    setNowOpen(false)
     setMode('view')
   }
 
@@ -230,7 +251,7 @@ function ProfileInner() {
   const initial = (displayName || user?.email || 'Y').charAt(0).toUpperCase()
   const viewerType = deriveViewerType(genres, stats.avg)
 
-  // Options for the pick pickers (poster thumbnails).
+  // Options for the pickers (poster thumbnails).
   const pickerOptions: CuteOption[] = items.map(i => ({
     value: i.id,
     label: i.title,
@@ -242,6 +263,9 @@ function ProfileInner() {
       </div>
     ),
   }))
+
+  // The item id whose title matches the current now-watching (for picker value).
+  const nowWatchingItemId = items.find(i => i.title === nowWatching)?.id || ''
 
   const hasAnyPick = PICK_SLOTS.some(s => picks[s.key])
   const aPickerIsOpen = openSlot !== null
@@ -425,23 +449,30 @@ function ProfileInner() {
               </div>
             </div>
 
-            {/* Now watching input */}
-            <div className="glass rounded-[22px] p-5 mb-4">
+            {/* Now watching — pick from Library. Lifted while open. */}
+            <div className={clsx('glass rounded-[22px] p-5 mb-4 relative', nowOpen ? 'z-50' : 'z-10')}>
               <label className="block text-[10px] font-semibold text-gray-400 mb-2.5 uppercase tracking-wide">Now watching</label>
-              <div className="relative">
-                <input
-                  value={nowWatching}
-                  onChange={e => setNowWatching(e.target.value)}
-                  placeholder="What's on right now? 🍿"
-                  className="w-full bg-white/80 border border-rose-100 rounded-xl px-3 py-2.5 text-sm text-gray-700 placeholder-gray-300 outline-none focus:border-rose-300"
+              {items.length === 0 ? (
+                <p className="text-xs text-gray-300">Add titles to your Library first, then pick what you&apos;re watching here.</p>
+              ) : (
+                <CuteSelect
+                  variant="full"
+                  searchable
+                  value={nowWatchingItemId}
+                  onChange={setNowWatchingFromItem}
+                  onOpenChange={setNowOpen}
+                  placeholder="Pick what you're watching… 🍿"
+                  options={pickerOptions}
                 />
-                {nowWatching && (
-                  <button onClick={() => { setNowWatching(''); setNowStartedAt(null) }}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500" aria-label="Clear">
-                    <X size={15} />
-                  </button>
-                )}
-              </div>
+              )}
+              {nowWatching && (
+                <button
+                  onClick={() => { setNowWatching(''); setNowStartedAt(null) }}
+                  className="mt-2 text-[11px] text-gray-400 hover:text-rose-500"
+                >
+                  Clear now watching
+                </button>
+              )}
             </div>
 
             {/* Genres grid */}
@@ -488,7 +519,7 @@ function ProfileInner() {
             </div>
 
             {/* Bio. Pushed behind the picks card while a picker is open. */}
-            <div className={clsx('glass rounded-[22px] p-5 mb-4 relative', aPickerIsOpen ? 'z-0' : 'z-10')}>
+            <div className={clsx('glass rounded-[22px] p-5 mb-4 relative', (aPickerIsOpen || nowOpen) ? 'z-0' : 'z-10')}>
               <div className="flex items-center justify-between mb-1">
                 <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Bio</label>
                 <span className={clsx('text-[11px]', bio.length > BIO_MAX - 20 ? 'text-rose-400' : 'text-gray-300')}>{bio.length}/{BIO_MAX}</span>
@@ -501,6 +532,13 @@ function ProfileInner() {
                 className="w-full bg-white/80 border border-rose-100 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-rose-300 resize-none"
               />
             </div>
+
+            {/* Save error (surfaces the real reason if a save fails) */}
+            {saveError && (
+              <p className="text-xs text-red-500 bg-red-50 rounded-lg px-3 py-2 mb-3">
+                Couldn&apos;t save: {saveError}
+              </p>
+            )}
 
             {/* Save / cancel */}
             <div className="flex gap-2">
