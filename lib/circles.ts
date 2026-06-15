@@ -87,3 +87,42 @@ export async function getCircleMembers(circleId: string) {
     profile: profiles?.find((p) => p.id === m.user_id) || null,
   }))
 }
+
+// Build a shareable invite link for a circle
+export function inviteLink(code: string): string {
+  if (typeof window !== 'undefined') {
+    return `${window.location.origin}/join/${code}`
+  }
+  return `/join/${code}`
+}
+
+interface FoundUser {
+  id: string
+  display_name: string | null
+  avatar_url: string | null
+}
+
+// Search for a registered user by their exact email
+export async function searchUserByEmail(email: string): Promise<FoundUser | null> {
+  const clean = email.trim()
+  if (!clean) return null
+  const { data, error } = await supabase.rpc('find_user_by_email', {
+    lookup_email: clean,
+  })
+  if (error || !data || data.length === 0) return null
+  return data[0] as FoundUser
+}
+
+// Invite a found user to a circle by adding them as a member (owner-only).
+export async function addMemberByUserId(
+  circleId: string,
+  userId: string,
+): Promise<{ ok: boolean; reason?: string }> {
+  const { data, error } = await supabase.rpc('add_member_to_circle', {
+    target_circle: circleId,
+    target_user: userId,
+  })
+  if (error) return { ok: false, reason: 'error' }
+  if (data === 'added') return { ok: true }
+  return { ok: false, reason: data as string }
+}
