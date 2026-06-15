@@ -130,3 +130,29 @@ export async function addMemberByUserId(
   if (data === 'added') return { ok: true }
   return { ok: false, reason: data as string }
 }
+
+// Leave a circle yourself. The owner can't leave (it would orphan the circle).
+export async function leaveCircle(
+  circleId: string,
+): Promise<{ ok: boolean; reason?: string }> {
+  const { data, error } = await supabase.rpc('leave_circle', {
+    target_circle: circleId,
+  })
+  if (error) return { ok: false, reason: 'error' }
+  if (data === 'left') return { ok: true }
+  return { ok: false, reason: data as string }
+}
+
+// Remove another member from a circle. Any member can remove anyone except the owner.
+export async function removeCircleMember(
+  circleId: string,
+  userId: string,
+): Promise<{ ok: boolean; reason?: string }> {
+  const { data, error } = await supabase.rpc('remove_circle_member', {
+    target_circle: circleId,
+    target_user: userId,
+  })
+  if (error) return { ok: false, reason: 'error' }
+  if (data === 'removed') return { ok: true }
+  return { ok: false, reason: data as string }
+}
