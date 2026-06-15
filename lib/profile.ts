@@ -1,4 +1,8 @@
-// Shared profile bits: the genre catalog and the viewer-type deriver.
+// Shared profile bits: the genre catalog, the viewer-type deriver, and a
+// stats loader that works for any user id (used by the profile page, the
+// public /u/[id] route, and circle member views).
+
+import { supabase } from '@/lib/supabase'
 
 export interface Genre {
   name: string
@@ -45,4 +49,40 @@ export function deriveViewerType(genres: string[], avgRating: number): string {
   if (avgRating >= 4.3) return 'The Generous Heart'
   if (avgRating > 0 && avgRating <= 2.8) return 'The Tough Critic'
   return 'The Curious Watcher'
+}
+
+// ----------------------------------------------------------------------------
+// Stats — computed the same way for any user id.
+// ----------------------------------------------------------------------------
+
+export interface ProfileStats {
+  watched: number
+  reviews: number
+  avg: number
+  topReaction: string | null
+}
+
+export async function loadProfileStats(userId: string): Promise<ProfileStats> {
+  const { data: reviews } = await supabase
+    .from('reviews').select('rating, reactions').eq('reviewer_id', userId)
+  const { count: watchedCount } = await supabase
+    .from('watchlist_items').select('id', { count: 'exact', head: true })
+    .eq('added_by_id', userId).eq('watched', true)
+
+  let avg = 0
+  let topReaction: string | null = null
+  if (reviews && reviews.length > 0) {
+    const rated = reviews.filter(r => (r.rating ?? 0) > 0)
+    if (rated.length > 0) avg = rated.reduce((s, r) => s + (r.rating || 0), 0) / rated.length
+    const counts: Record<string, number> = {}
+    reviews.forEach(r => (r.reactions || []).forEach((lbl: string) => { counts[lbl] = (counts[lbl] || 0) + 1 }))
+    const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]
+    if (top) topReaction = top[0]
+  }
+  return {
+    watched: watchedCount || 0,
+    reviews: reviews?.length || 0,
+    avg: Math.round(avg * 10) / 10,
+    topReaction,
+  }
 }

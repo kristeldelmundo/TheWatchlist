@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import Link from 'next/link'
 import Navbar from '@/components/layout/Navbar'
 import RequireAuth from '@/components/auth/RequireAuth'
 import { useAuth } from '@/components/auth/AuthProvider'
@@ -17,7 +18,7 @@ import {
   removeCircleMember,
 } from '@/lib/circles'
 import {
-  Plus, Users, Check, LogIn, Loader2, Sparkles, Link2, UserPlus, Search, Pencil, X, LogOut,
+  Plus, Users, Check, LogIn, Loader2, Sparkles, Link2, UserPlus, Search, Pencil, X, LogOut, ChevronRight,
 } from 'lucide-react'
 import { clsx } from 'clsx'
 
@@ -532,10 +533,18 @@ function CirclesInner() {
                       </div>
                     )}
 
-                    {/* Member list */}
-                    <label className="block text-xs font-medium text-gray-500 mb-2 uppercase tracking-wide">
-                      Members ({members.length})
-                    </label>
+                    {/* Member list — tap a member to view their profile */}
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide">
+                        Members ({members.length})
+                      </label>
+                      <Link
+                        href="/circles/members"
+                        className="flex items-center gap-0.5 text-xs text-rose-400 hover:text-rose-600 font-medium transition-colors"
+                      >
+                        View all <ChevronRight size={12} />
+                      </Link>
+                    </div>
                     <div className="flex flex-wrap gap-2">
                       {members.map((m) => {
                         const nm = m.profile?.display_name || 'Member'
@@ -549,20 +558,22 @@ function CirclesInner() {
                             key={m.user_id}
                             className="flex items-center gap-2 bg-white/70 border border-rose-100 rounded-full pl-1 pr-2 py-1"
                           >
-                            {m.profile?.avatar_url ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img src={m.profile.avatar_url} alt={nm} className="w-6 h-6 rounded-full object-cover" />
-                            ) : (
-                              <span
-                                className={clsx(
-                                  'w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold',
-                                  isPurple ? 'bg-purple-100 text-purple-600' : 'bg-rose-100 text-rose-600',
-                                )}
-                              >
-                                {nm.charAt(0).toUpperCase()}
-                              </span>
-                            )}
-                            <span className="text-xs text-gray-600">{nm}{isMe ? ' (you)' : ''}</span>
+                            <Link href={`/u/${m.user_id}`} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+                              {m.profile?.avatar_url ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={m.profile.avatar_url} alt={nm} className="w-6 h-6 rounded-full object-cover" />
+                              ) : (
+                                <span
+                                  className={clsx(
+                                    'w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold',
+                                    isPurple ? 'bg-purple-100 text-purple-600' : 'bg-rose-100 text-rose-600',
+                                  )}
+                                >
+                                  {nm.charAt(0).toUpperCase()}
+                                </span>
+                              )}
+                              <span className="text-xs text-gray-600">{nm}{isMe ? ' (you)' : ''}</span>
+                            </Link>
                             {isMemberOwner && (
                               <span className="text-[10px] text-rose-400 font-medium">owner</span>
                             )}
