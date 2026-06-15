@@ -18,6 +18,10 @@ export interface Profile {
   bio: string | null
   status: string | null
   now_watching: string | null
+  tagline: string | null
+  fav_genres: string[] | null
+  viewer_type: string | null
+  now_watching_started_at: string | null
 }
 
 interface AuthContextValue {
