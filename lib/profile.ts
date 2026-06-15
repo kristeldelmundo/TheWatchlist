@@ -31,24 +31,96 @@ export function genreByName(name: string): Genre | undefined {
   return GENRES.find(g => g.name === name)
 }
 
+// ----------------------------------------------------------------------------
+// Viewer type — a fun label derived from someone's full taste profile, not
+// just whichever genre happens to be checked first. Every genre votes for one
+// or more candidate types (with weights), rating habits cast their own votes,
+// and the highest-scoring type wins. Ties favor the more specific/combo types
+// (listed first in PRIORITY) so e.g. someone into both Horror + Thriller gets
+// the combo label over either genre's solo label.
+// ----------------------------------------------------------------------------
+
+// Genre -> { viewer type label: vote weight }. A genre can support more than
+// one type; combo bonuses below add extra votes when genres pair up.
+const GENRE_VOTES: Record<string, Record<string, number>> = {
+  'Rom-Com': { 'The Cozy Rewatcher': 2, 'The Hopeless Romantic': 1 },
+  'Horror': { 'The Plot-Twist Hunter': 1, 'The 2am Horror Gremlin': 1, 'The Adrenaline Junkie': 1 },
+  'A24 indie': { 'The Indie Connoisseur': 2 },
+  'Ghibli': { 'The Animation Soul': 2, 'The Cozy Rewatcher': 1 },
+  'Thriller': { 'The Plot-Twist Hunter': 2, 'The 2am Horror Gremlin': 1 },
+  'Sci-Fi': { 'The World-Builder': 2, 'The Indie Connoisseur': 1 },
+  'K-Drama': { 'The Hopeless Romantic': 2, 'The Cozy Rewatcher': 1 },
+  'Documentary': { 'The Indie Connoisseur': 2, 'The Curious Mind': 2 },
+  'Action': { 'The Popcorn Thrill-Seeker': 2, 'The Adrenaline Junkie': 1 },
+  'Animation': { 'The Animation Soul': 2 },
+  'Drama': { 'The Emotional Deep-Diver': 2, 'The Curious Mind': 1 },
+  'Comedy': { 'The Feel-Good Fan': 2, 'The Cozy Rewatcher': 1 },
+}
+
+// Extra votes when specific genre pairs show up together — captures the
+// "this combo of tastes really means something specific" cases.
+const COMBO_BONUSES: { genres: [string, string]; type: string; bonus: number }[] = [
+  { genres: ['Horror', 'Thriller'], type: 'The 2am Horror Gremlin', bonus: 2 },
+  { genres: ['Rom-Com', 'K-Drama'], type: 'The Hopeless Romantic', bonus: 2 },
+  { genres: ['A24 indie', 'Documentary'], type: 'The Indie Connoisseur', bonus: 2 },
+  { genres: ['Ghibli', 'Animation'], type: 'The Animation Soul', bonus: 1 },
+  { genres: ['Action', 'Sci-Fi'], type: 'The Popcorn Thrill-Seeker', bonus: 1 },
+  { genres: ['Drama', 'Documentary'], type: 'The Emotional Deep-Diver', bonus: 1 },
+  { genres: ['Comedy', 'Rom-Com'], type: 'The Feel-Good Fan', bonus: 1 },
+]
+
+// Display-order priority used only to break ties deterministically — earlier
+// entries win ties over later ones.
+const TYPE_PRIORITY: string[] = [
+  'The 2am Horror Gremlin',
+  'The Hopeless Romantic',
+  'The Indie Connoisseur',
+  'The Animation Soul',
+  'The World-Builder',
+  'The Emotional Deep-Diver',
+  'The Plot-Twist Hunter',
+  'The Popcorn Thrill-Seeker',
+  'The Adrenaline Junkie',
+  'The Feel-Good Fan',
+  'The Curious Mind',
+  'The Cozy Rewatcher',
+  'The Generous Heart',
+  'The Tough Critic',
+  'The Curious Watcher',
+]
+
 // Derive a fun "viewer type" label from genre picks + how the user rates.
 // avgRating is 0 when there aren't enough reviews yet.
 export function deriveViewerType(genres: string[], avgRating: number): string {
-  const has = (n: string) => genres.includes(n)
+  const scores: Record<string, number> = {}
+  const add = (type: string, amount: number) => { scores[type] = (scores[type] || 0) + amount }
 
-  if (has('Horror') && has('Thriller')) return 'The 2am Horror Gremlin'
-  if (has('Thriller')) return 'The Plot-Twist Hunter'
-  if (has('Rom-Com') && has('K-Drama')) return 'The Hopeless Romantic'
-  if (has('Rom-Com')) return 'The Cozy Rewatcher'
-  if (has('A24 indie') || has('Documentary')) return 'The Indie Connoisseur'
-  if (has('Ghibli') || has('Animation')) return 'The Animation Soul'
-  if (has('Sci-Fi')) return 'The World-Builder'
-  if (has('Action')) return 'The Popcorn Thrill-Seeker'
+  for (const g of genres) {
+    const votes = GENRE_VOTES[g]
+    if (!votes) continue
+    for (const [type, weight] of Object.entries(votes)) add(type, weight)
+  }
 
-  // Fall back to rating habits if no strong genre signal
-  if (avgRating >= 4.3) return 'The Generous Heart'
-  if (avgRating > 0 && avgRating <= 2.8) return 'The Tough Critic'
-  return 'The Curious Watcher'
+  for (const combo of COMBO_BONUSES) {
+    if (combo.genres.every(g => genres.includes(g))) add(combo.type, combo.bonus)
+  }
+
+  // Rating habits always cast a (smaller) vote, so they can nudge close
+  // calls or carry the result when genre signal is weak/absent.
+  if (avgRating >= 4.3) add('The Generous Heart', 1.5)
+  else if (avgRating > 0 && avgRating <= 2.8) add('The Tough Critic', 1.5)
+
+  // Baseline fallback always has a tiny presence so it can win when nothing
+  // else has any signal at all.
+  add('The Curious Watcher', 0.1)
+
+  let best = 'The Curious Watcher'
+  let bestScore = -Infinity
+  for (const type of TYPE_PRIORITY) {
+    const score = scores[type] || 0
+    if (score > bestScore) { bestScore = score; best = type }
+  }
+  return best
 }
 
 // ----------------------------------------------------------------------------
