@@ -679,7 +679,7 @@ function CirclesInner() {
                 <input
                   value={joinCode}
                   onChange={(e) => setJoinCode(e.target.value)}
-                  placeholder="Paste invite code..."
+                  placeholder="Paste the invite code or link..."
                   className="flex-1 bg-white/80 border border-rose-100 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-rose-300"
                 />
                 <button
@@ -691,6 +691,9 @@ function CirclesInner() {
                   Join
                 </button>
               </div>
+              <p className="text-[11px] text-gray-300 mt-2">
+                You can paste the whole invite link — we&apos;ll find the code for you. 🍿
+              </p>
               {joinMsg && (
                 <p
                   className={clsx(
