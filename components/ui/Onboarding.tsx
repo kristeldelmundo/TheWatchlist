@@ -14,19 +14,19 @@ const STEPS = [
     icon: <Users size={28} className="text-rose-500" />,
     emoji: '👋',
     title: 'Welcome to CinePop!',
-    body: "It's your shared movie-night home. Build watchlists together, let fate pick what to watch, then rate it as a crew. Here's the quick tour.",
+    body: "It's your shared movie-night home. Build libraries together, let fate pick what to watch, then rate it as a crew. Here's the quick tour.",
   },
   {
     icon: <Users size={28} className="text-rose-500" />,
     emoji: '🍿',
     title: 'Start with a Circle',
-    body: 'A circle is your movie group — you and your partner, family, or friends. Everyone in a circle shares the same watchlist. Make one, name it, pick an emoji.',
+    body: 'A circle is your movie group — you and your partner, family, or friends. Everyone in a circle shares the same library. Make one, name it, pick an emoji.',
   },
   {
     icon: <Film size={28} className="text-rose-500" />,
     emoji: '🎬',
     title: 'Add movies & shows',
-    body: 'Search any title and add it to your circle\'s watchlist. Browse the Trending tab for this week\'s top 10 and add with one tap.',
+    body: 'Search any title and add it to your circle\'s library. Browse the Trending tab for this week\'s top 10 and add with one tap.',
   },
   {
     icon: <Shuffle size={28} className="text-rose-500" />,
