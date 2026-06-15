@@ -339,22 +339,22 @@ function ProfileInner() {
             <div className="flex gap-5 items-center">
               {avatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={avatarUrl} alt={displayName || 'You'} className="rounded-full object-cover flex-shrink-0 ring-2 ring-white shadow" style={{ width: 76, height: 76 }} />
+                <img src={avatarUrl} alt={displayName || 'You'} className="rounded-full object-cover flex-shrink-0 ring-2 ring-white shadow" style={{ width: 80, height: 80 }} />
               ) : (
-                <span className="rounded-full flex items-center justify-center text-3xl font-bold text-white flex-shrink-0 font-display" style={{ width: 76, height: 76, background: accentObj.ring }}>
+                <span className="rounded-full flex items-center justify-center text-4xl font-bold text-white flex-shrink-0 font-display" style={{ width: 80, height: 80, background: accentObj.ring }}>
                   {initial}
                 </span>
               )}
               <div className="min-w-0 flex-1">
-                <div className="font-display text-2xl font-bold leading-tight" style={{ color: nameColor || '#1f2937' }}>{displayName || 'Your name'}</div>
+                <div className="font-display text-3xl font-bold leading-tight" style={{ color: nameColor || '#1f2937' }}>{displayName || 'Your name'}</div>
                 {genres.length > 0 && (
-                  <div className="text-sm font-display italic font-bold leading-tight mt-0.5" style={{ color: customTextColor || '#a855f7' }}>✨ {viewerType}</div>
+                  <div className="text-base font-display italic font-bold leading-tight mt-1" style={{ color: customTextColor || '#a855f7' }}>✨ {viewerType}</div>
                 )}
-                {tagline && <div className="text-[13px] italic truncate mt-0.5" style={{ color: customTextColor || '#fb7093' }}>&ldquo;{tagline}&rdquo;</div>}
+                {tagline && <div className="text-[15px] italic truncate mt-1" style={{ color: customTextColor || '#fb7093' }}>&ldquo;{tagline}&rdquo;</div>}
               </div>
             </div>
 
-            {bio && <p className="text-[13.5px] leading-relaxed mt-4" style={{ color: bodyColor || '#4b5563' }}>{bio}</p>}
+            {bio && <p className="text-[15px] leading-relaxed mt-4" style={{ color: bodyColor || '#4b5563' }}>{bio}</p>}
 
             {/* Stats strip */}
             <div className="flex items-center mt-5 py-4 border-t border-b" style={{ borderColor: 'rgba(243,216,226,0.8)' }}>
@@ -370,34 +370,34 @@ function ProfileInner() {
             {/* Now watching */}
             {showNowWatching && (
               <div className="mt-5 rounded-[16px] p-4 flex items-center gap-4" style={{ background: 'linear-gradient(100deg,#e0457b,#a855f7)' }}>
-                <div className="rounded-[8px] flex-shrink-0 flex items-center justify-center overflow-hidden" style={{ width: 40, height: 58, background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.25)' }}>
+                <div className="rounded-[8px] flex-shrink-0 flex items-center justify-center overflow-hidden" style={{ width: 44, height: 64, background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.25)' }}>
                   {nowWatchingPoster ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={nowWatchingPoster} alt="" className="w-full h-full object-cover" />
                   ) : (
-                    <span className="cp-pop text-lg">🍿</span>
+                    <span className="cp-pop text-xl">🍿</span>
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
                     <span className="cp-live" />
-                    <span className="text-[10px] font-bold uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.9)' }}>Watching now</span>
+                    <span className="text-[11px] font-bold uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.9)' }}>Watching now</span>
                   </div>
-                  <div className="text-[17px] font-bold text-white leading-tight truncate mt-0.5">{nowWatching}</div>
+                  <div className="text-[19px] font-bold text-white leading-tight truncate mt-0.5">{nowWatching}</div>
                 </div>
-                <span className="text-[11px] flex-shrink-0" style={{ color: 'rgba(255,255,255,0.7)' }}>{daysAgoLabel(nowStartedAt)}</span>
+                <span className="text-[12px] flex-shrink-0" style={{ color: 'rgba(255,255,255,0.7)' }}>{daysAgoLabel(nowStartedAt)}</span>
               </div>
             )}
 
             {/* Genres */}
             {genres.length > 0 && (
               <div className="mt-5">
-                <div className="text-[10px] font-bold uppercase tracking-wide mb-2.5" style={{ color: customTextColor || '#9ca3af' }}>Genres</div>
+                <div className="text-[12px] font-bold uppercase tracking-wide mb-2.5" style={{ color: customTextColor || '#9ca3af' }}>Genres</div>
                 <div className="flex flex-wrap gap-2">
                   {genres.map(name => {
                     const g = genreByName(name)
                     return (
-                      <span key={name} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[13px] font-semibold"
+                      <span key={name} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[14px] font-semibold"
                         style={g ? { background: g.bg, color: g.text } : undefined}>
                         {g ? `${g.emoji} ` : ''}{name}
                       </span>
@@ -410,19 +410,19 @@ function ProfileInner() {
             {/* If I had to pick — editable categories, 2-col grid */}
             {hasAnyPick && (
               <div className="mt-5">
-                <div className="text-[10px] font-bold uppercase tracking-wide mb-2.5" style={{ color: customTextColor || '#9ca3af' }}>If I had to pick…</div>
+                <div className="text-[12px] font-bold uppercase tracking-wide mb-2.5" style={{ color: customTextColor || '#9ca3af' }}>If I had to pick…</div>
                 <div className="grid grid-cols-2 gap-4">
                   {visiblePicks.map((p, i) => (
                     <div key={i} className="flex gap-2.5 items-center min-w-0">
-                      <div className="rounded-md flex-shrink-0 flex items-center justify-center bg-rose-50 overflow-hidden" style={{ width: 40, height: 58 }}>
+                      <div className="rounded-md flex-shrink-0 flex items-center justify-center bg-rose-50 overflow-hidden" style={{ width: 44, height: 64 }}>
                         {p.poster ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={p.poster} alt={p.title} className="w-full h-full object-cover" />
-                        ) : <span className="text-lg">{p.emoji || '🎬'}</span>}
+                        ) : <span className="text-xl">{p.emoji || '🎬'}</span>}
                       </div>
                       <div className="min-w-0">
-                        <div className="text-[9.5px] uppercase tracking-wide font-bold leading-tight" style={{ color: customTextColor || '#fb7093' }}>{p.emoji} {p.label}</div>
-                        <div className="text-[13.5px] font-semibold leading-tight truncate mt-0.5" style={{ color: nameColor || '#1f2937' }}>{p.title}</div>
+                        <div className="text-[11px] uppercase tracking-wide font-bold leading-tight" style={{ color: customTextColor || '#fb7093' }}>{p.emoji} {p.label}</div>
+                        <div className="text-[15px] font-semibold leading-tight truncate mt-0.5" style={{ color: nameColor || '#1f2937' }}>{p.title}</div>
                       </div>
                     </div>
                   ))}
@@ -678,9 +678,9 @@ function ProfileInner() {
 function MiniStat({ icon, n, label, ring }: { icon: string; n: number | string; label: string; ring: string }) {
   return (
     <div className="text-center flex-1 min-w-0">
-      <div className="text-[15px] leading-none">{icon}</div>
-      {n !== '' && <div className="text-[18px] font-bold leading-none mt-1.5" style={{ color: ring }}>{n}</div>}
-      <div className="text-[9px] uppercase tracking-wide text-gray-400 font-semibold mt-1.5">{label}</div>
+      <div className="text-[17px] leading-none">{icon}</div>
+      {n !== '' && <div className="text-[20px] font-bold leading-none mt-1.5" style={{ color: ring }}>{n}</div>}
+      <div className="text-[10px] uppercase tracking-wide text-gray-400 font-semibold mt-1.5">{label}</div>
     </div>
   )
 }
