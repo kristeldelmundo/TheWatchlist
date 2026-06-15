@@ -12,7 +12,7 @@ import {
   getCircleMembers,
   inviteLink,
   searchUserByEmail,
-  addMemberByUserId,
+  inviteUserToCircle,
   leaveCircle,
   removeCircleMember,
 } from '@/lib/circles'
@@ -165,6 +165,7 @@ function CirclesInner() {
     // Reset edit/manage state when switching circles
     setEditing(false)
     setManageMsg(null)
+    setInviteMsg(null)
   }, [loadMembers])
 
   async function handleCreate() {
@@ -243,17 +244,20 @@ function CirclesInner() {
       return
     }
 
-    const result = await addMemberByUserId(activeCircle.id, found.id)
+    // Creates a PENDING invite — they get a notification to accept or decline.
+    const result = await inviteUserToCircle(activeCircle.id, found.id)
+    const nm = found.display_name || 'they'
     if (result.ok) {
-      setInviteMsg({ kind: 'ok', text: `Added ${found.display_name || 'them'}! 🍿` })
+      setInviteMsg({ kind: 'ok', text: `Invite sent to ${found.display_name || 'them'}! They'll get a notification to accept. 🍿` })
       setInviteEmail('')
-      loadMembers()
     } else if (result.reason === 'already_member') {
-      setInviteMsg({ kind: 'ok', text: "They're already in this circle!" })
-    } else if (result.reason === 'not_owner') {
-      setInviteMsg({ kind: 'err', text: 'Only the circle owner can add members by email. Share the invite link instead!' })
+      setInviteMsg({ kind: 'ok', text: `${nm}'re already in this circle!` })
+    } else if (result.reason === 'already_invited') {
+      setInviteMsg({ kind: 'ok', text: `${nm} already have a pending invite — waiting on them to accept!` })
+    } else if (result.reason === 'not_a_member') {
+      setInviteMsg({ kind: 'err', text: 'Only members of this circle can invite people.' })
     } else {
-      setInviteMsg({ kind: 'err', text: 'Could not add them. Try the invite link.' })
+      setInviteMsg({ kind: 'err', text: 'Could not send the invite. Try the invite link.' })
     }
     setInviting(false)
   }
@@ -494,7 +498,7 @@ function CirclesInner() {
                     {isOwner && (
                       <div className="mb-3">
                         <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">
-                          Add by email
+                          Invite by email
                         </label>
                         <div className="flex gap-2">
                           <div className="relative flex-1">
@@ -512,7 +516,7 @@ function CirclesInner() {
                             className="flex items-center gap-1.5 bg-rose-500 hover:bg-rose-600 disabled:bg-rose-300 text-white font-medium px-3 rounded-xl text-sm transition-all"
                           >
                             {inviting ? <Loader2 size={14} className="animate-spin" /> : <UserPlus size={14} />}
-                            Add
+                            Invite
                           </button>
                         </div>
                         {inviteMsg && (
