@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { loadProfileStats, type ProfileStats } from '@/lib/profile'
+import { loadProfileStats, findProfileIdentifier, type ProfileStats } from '@/lib/profile'
 import { resolveBgStyle } from '@/lib/theme'
 import ProfileCard, { type ProfileCardData } from '@/components/profile/ProfileCard'
 import { Loader2 } from 'lucide-react'
@@ -22,15 +22,17 @@ export default function PublicProfilePage() {
     let cancelled = false
     async function load() {
       if (!id) { setNotFound(true); setLoading(false); return }
+      // /@<username> and /@<uuid> both route here — figure out which we got.
+      const { column, value } = await findProfileIdentifier(decodeURIComponent(id))
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, display_name, avatar_url, accent_color, bio, tagline, fav_genres, now_watching, now_watching_started_at, custom_picks, picks, font_family, font_scale, text_color, bg_type, bg_image')
-        .eq('id', id)
+        .select('id, display_name, username, avatar_url, accent_color, bio, tagline, fav_genres, now_watching, now_watching_started_at, custom_picks, picks, font_family, font_scale, text_color, bg_type, bg_image')
+        .eq(column, value)
         .single()
       if (cancelled) return
       if (error || !data) { setNotFound(true); setLoading(false); return }
       setProfile(data as ProfileCardData)
-      const s = await loadProfileStats(id)
+      const s = await loadProfileStats(data.id)
       if (cancelled) return
       setStats(s)
       setLoading(false)
