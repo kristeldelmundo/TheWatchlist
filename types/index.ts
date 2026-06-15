@@ -1,4 +1,6 @@
-export type WatchlistUser = 'Kristel' | 'Eric'
+// Legacy alias — kept so older imports don't break. Anyone can be a member now,
+// so "added_by" is just a display name string.
+export type WatchlistUser = string
 
 export type MediaType = 'movie' | 'tv'
 
@@ -6,7 +8,9 @@ export interface WatchlistItem {
   id: string
   title: string
   type: MediaType
-  added_by: WatchlistUser
+  added_by: string
+  added_by_id: string | null
+  circle_id: string | null
   poster: string | null
   plot: string | null
   year: string | null
@@ -19,6 +23,7 @@ export interface WatchlistItem {
 export interface Review {
   id: string
   watchlist_item_id: string
+  circle_id: string | null
   title: string
   poster: string | null
   rating_k: number
