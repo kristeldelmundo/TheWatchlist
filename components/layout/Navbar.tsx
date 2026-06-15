@@ -19,7 +19,7 @@ import { useCircle } from "@/components/auth/CircleProvider";
 import InviteBell from "@/components/layout/InviteBell";
 
 const navItems = [
-  { href: "/watchlist", label: "Watchlist", icon: Film },
+  { href: "/watchlist", label: "Library", icon: Film },
   { href: "/trending", label: "Trending", icon: TrendingUp },
   { href: "/randomizer", label: "Pick for us!", icon: Shuffle },
   { href: "/review", label: "Rate & Share", icon: Star },
