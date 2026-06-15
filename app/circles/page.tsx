@@ -558,7 +558,7 @@ function CirclesInner() {
                             key={m.user_id}
                             className="flex items-center gap-2 bg-white/70 border border-rose-100 rounded-full pl-1 pr-2 py-1"
                           >
-                            <Link href={`/u/${m.user_id}`} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+                            <Link href={`/@${m.user_id}`} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
                               {m.profile?.avatar_url ? (
                                 // eslint-disable-next-line @next/next/no-img-element
                                 <img src={m.profile.avatar_url} alt={nm} className="w-6 h-6 rounded-full object-cover" />
