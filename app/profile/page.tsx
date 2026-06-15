@@ -66,6 +66,15 @@ function ProfileInner() {
   // above the following Bio card and stop the list being covered).
   const [openSlot, setOpenSlot] = useState<string | null>(null)
 
+  // Called by each pick CuteSelect when it opens/closes.
+  function handleSlotOpenChange(slotKey: string, isOpen: boolean) {
+    setOpenSlot(prev => {
+      if (isOpen) return slotKey
+      // Only clear if this slot was the one marked open.
+      return prev === slotKey ? null : prev
+    })
+  }
+
   // Hydrate local state from the profile.
   const hydrate = useCallback(() => {
     if (!profile) return
@@ -469,7 +478,7 @@ function ProfileInner() {
                       searchable
                       value={items.find(i => picks[s.key] && i.title === picks[s.key].title)?.id || ''}
                       onChange={(id) => setPick(s.key, id)}
-                      onOpenChange={(o) => setOpenSlot(o ? s.key : (prev => prev === s.key ? null : prev) as unknown as string)}
+                      onOpenChange={(o) => handleSlotOpenChange(s.key, o)}
                       placeholder="Pick a title…"
                       options={pickerOptions}
                     />
