@@ -21,6 +21,7 @@ const REACTION_EMOJI: Record<string, string> = {
 export interface ProfileCardData {
   id: string
   display_name: string | null
+  username?: string | null
   avatar_url: string | null
   accent_color: string | null
   bio: string | null
