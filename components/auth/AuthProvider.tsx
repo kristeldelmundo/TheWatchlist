@@ -33,6 +33,8 @@ export interface Profile {
   viewer_type: string | null
   now_watching_started_at: string | null
   picks: ProfilePicks | null
+  bg_image: string | null
+  bg_type: string | null
 }
 
 interface AuthContextValue {
