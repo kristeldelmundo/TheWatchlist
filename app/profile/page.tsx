@@ -435,6 +435,21 @@ function ProfileInner() {
               />
             </div>
 
+            {/* Bio — moved up: edit your bio right after your name/photo */}
+            <div className="cp-card rounded-[20px] p-4 mb-3 relative z-10">
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Bio</label>
+                <span className={clsx('text-[11px]', bio.length > BIO_MAX - 20 ? 'text-rose-400' : 'text-gray-300')}>{bio.length}/{BIO_MAX}</span>
+              </div>
+              <textarea
+                value={bio}
+                onChange={(e) => setBio(e.target.value.slice(0, BIO_MAX))}
+                rows={3}
+                placeholder="A little about your movie taste..."
+                className="w-full bg-white/80 border border-rose-100 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-rose-300 resize-none"
+              />
+            </div>
+
             {/* Theme: accent + background */}
             <div className="cp-card rounded-[20px] p-4 mb-3">
               <label className="block text-[10px] font-semibold text-gray-400 mb-2 uppercase tracking-wide">Accent color</label>
@@ -537,21 +552,6 @@ function ProfileInner() {
                   )
                 })}
               </div>
-            </div>
-
-            {/* Bio */}
-            <div className={clsx('cp-card rounded-[20px] p-4 mb-3 relative', (aPickerIsOpen || nowOpen) ? 'z-0' : 'z-10')}>
-              <div className="flex items-center justify-between mb-1">
-                <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Bio</label>
-                <span className={clsx('text-[11px]', bio.length > BIO_MAX - 20 ? 'text-rose-400' : 'text-gray-300')}>{bio.length}/{BIO_MAX}</span>
-              </div>
-              <textarea
-                value={bio}
-                onChange={(e) => setBio(e.target.value.slice(0, BIO_MAX))}
-                rows={3}
-                placeholder="A little about your movie taste..."
-                className="w-full bg-white/80 border border-rose-100 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-rose-300 resize-none"
-              />
             </div>
 
             {saveError && (
