@@ -6,7 +6,7 @@ import RequireAuth from '@/components/auth/RequireAuth'
 import { useAuth } from '@/components/auth/AuthProvider'
 import type { ProfilePicks, ProfilePick } from '@/components/auth/AuthProvider'
 import { supabase } from '@/lib/supabase'
-import { Loader2, Check, Camera, Sparkles, Pencil } from 'lucide-react'
+import { Loader2, Check, Camera, Pencil } from 'lucide-react'
 import { clsx } from 'clsx'
 import { GENRES, genreByName, deriveViewerType } from '@/lib/profile'
 import CatalogPicker, { CatalogChoice } from '@/components/ui/CatalogPicker'
@@ -21,12 +21,12 @@ const REACTION_EMOJI: Record<string, string> = {
   'Perfect date night': '💑', "So bad it's good": '💀',
 }
 
-// The four "if I had to pick" slots.
-const PICK_SLOTS: { key: string; emoji: string; label: string }[] = [
-  { key: 'comfort', emoji: '🛋️', label: 'Comfort movie' },
-  { key: 'cry', emoji: '😢', label: 'Last great cry' },
-  { key: 'guilty', emoji: '🙈', label: 'Guilty pleasure' },
-  { key: 'hill', emoji: '⛰️', label: "Hill I'll die on" },
+// The four "if I had to pick" slots. Short labels for the compact grid.
+const PICK_SLOTS: { key: string; emoji: string; label: string; short: string }[] = [
+  { key: 'comfort', emoji: '🛋️', label: 'Comfort movie', short: 'Comfort' },
+  { key: 'cry', emoji: '😢', label: 'Last great cry', short: 'Last cry' },
+  { key: 'guilty', emoji: '🙈', label: 'Guilty pleasure', short: 'Guilty' },
+  { key: 'hill', emoji: '⛰️', label: "Hill I'll die on", short: "Hill I'll die on" },
 ]
 
 interface Stats {
@@ -60,9 +60,7 @@ function ProfileInner() {
 
   const [stats, setStats] = useState<Stats>({ watched: 0, reviews: 0, avg: 0, topReaction: null })
 
-  // Which pick slot's dropdown is open (so we can lift its card above the Bio).
   const [openSlot, setOpenSlot] = useState<string | null>(null)
-  // True while the Now Watching picker is open.
   const [nowOpen, setNowOpen] = useState(false)
 
   function handleSlotOpenChange(slotKey: string, isOpen: boolean) {
@@ -72,7 +70,6 @@ function ProfileInner() {
     })
   }
 
-  // Hydrate local state from the profile.
   const hydrate = useCallback(() => {
     if (!profile) return
     setDisplayName(profile.display_name || '')
@@ -84,13 +81,11 @@ function ProfileInner() {
     setNowWatching(profile.now_watching || '')
     setNowStartedAt(profile.now_watching_started_at || null)
     setPicks(profile.picks || {})
-    // Recover the now-watching poster from picks if one matches (best effort).
     setNowWatchingPoster(null)
   }, [profile])
 
   useEffect(() => { hydrate() }, [hydrate])
 
-  // Auto stats.
   const loadStats = useCallback(async () => {
     if (!user) return
     const { data: reviews } = await supabase
@@ -123,9 +118,9 @@ function ProfileInner() {
   function daysAgoLabel(iso: string | null): string {
     if (!iso) return ''
     const days = Math.floor((Date.now() - new Date(iso).getTime()) / (1000 * 60 * 60 * 24))
-    if (days <= 0) return 'started today'
-    if (days === 1) return 'started yesterday'
-    return `started ${days} days ago`
+    if (days <= 0) return 'today'
+    if (days === 1) return 'yesterday'
+    return `${days}d ago`
   }
 
   async function handlePickFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -154,7 +149,6 @@ function ProfileInner() {
     setGenres(prev => prev.includes(name) ? prev.filter(g => g !== name) : [...prev, name])
   }
 
-  // Set a pick slot from a catalog choice (or clear it).
   function setPick(slotKey: string, choice: CatalogChoice | null) {
     if (!choice) {
       setPicks(prev => { const next = { ...prev }; delete next[slotKey]; return next })
@@ -164,7 +158,6 @@ function ProfileInner() {
     setPicks(prev => ({ ...prev, [slotKey]: pick }))
   }
 
-  // Set now-watching from a catalog choice (store title + poster), or clear it.
   function setNowWatchingChoice(choice: CatalogChoice | null) {
     if (!choice) { setNowWatching(''); setNowWatchingPoster(null); setNowStartedAt(null); return }
     setNowWatching(choice.title)
@@ -172,7 +165,7 @@ function ProfileInner() {
   }
 
   function cancelEdit() {
-    hydrate() // discard unsaved changes
+    hydrate()
     setOpenSlot(null)
     setNowOpen(false)
     setSaveError(null)
@@ -234,7 +227,6 @@ function ProfileInner() {
   const initial = (displayName || user?.email || 'Y').charAt(0).toUpperCase()
   const viewerType = deriveViewerType(genres, stats.avg)
 
-  // The current now-watching as a CatalogChoice (for the picker's display value).
   const nowWatchingChoice: CatalogChoice | null = nowWatching.trim()
     ? { title: nowWatching, year: null, poster: nowWatchingPoster, type: 'movie' }
     : null
@@ -247,97 +239,92 @@ function ProfileInner() {
       <Navbar />
       <style>{`
         @keyframes cp-pop { 0%,100%{transform:translateY(0) rotate(-3deg)} 50%{transform:translateY(-3px) rotate(3deg)} }
-        @keyframes cp-pulse { 0%{box-shadow:0 0 0 0 rgba(74,222,128,0.6)} 70%{box-shadow:0 0 0 7px rgba(74,222,128,0)} 100%{box-shadow:0 0 0 0 rgba(74,222,128,0)} }
+        @keyframes cp-pulse { 0%{box-shadow:0 0 0 0 rgba(74,222,128,0.6)} 70%{box-shadow:0 0 0 6px rgba(74,222,128,0)} 100%{box-shadow:0 0 0 0 rgba(74,222,128,0)} }
         .cp-pop{display:inline-block;animation:cp-pop 1.4s ease-in-out infinite}
-        .cp-live{width:8px;height:8px;border-radius:50%;background:#4ade80;display:inline-block;animation:cp-pulse 2s infinite}
+        .cp-live{width:7px;height:7px;border-radius:50%;background:#4ade80;display:inline-block;animation:cp-pulse 2s infinite}
       `}</style>
 
-      <main className="max-w-md mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="font-display text-3xl font-bold text-gray-800">
+      <main className="max-w-sm mx-auto px-4 py-6">
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="font-display text-2xl font-bold text-gray-800">
             My <span className="gradient-text italic">Profile</span>
           </h1>
           {mode === 'view' && (
             <button
               onClick={() => setMode('edit')}
-              className="flex items-center gap-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-semibold px-3.5 py-2 rounded-full transition-all"
+              className="flex items-center gap-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-semibold px-3 py-1.5 rounded-full transition-all"
             >
-              <Pencil size={13} /> Edit profile
+              <Pencil size={12} /> Edit
             </button>
           )}
         </div>
 
-        {/* ===================== VIEW MODE ===================== */}
+        {/* ===================== VIEW MODE — one compact card ===================== */}
         {mode === 'view' && (
-          <>
-            {/* Header */}
-            <div className="glass rounded-[22px] p-6 mb-4 text-center">
+          <div className="glass rounded-[20px] p-4">
+            {/* Header row: avatar beside name + type */}
+            <div className="flex gap-3.5 items-center">
               {avatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={avatarUrl} alt={displayName || 'You'} className="rounded-full object-cover mx-auto ring-2 ring-white shadow" style={{ width: 88, height: 88 }} />
+                <img src={avatarUrl} alt={displayName || 'You'} className="rounded-full object-cover flex-shrink-0 ring-2 ring-white shadow" style={{ width: 58, height: 58 }} />
               ) : (
-                <span className={clsx('rounded-full flex items-center justify-center text-4xl font-bold text-white mx-auto font-display', accentBg)} style={{ width: 88, height: 88 }}>
+                <span className={clsx('rounded-full flex items-center justify-center text-2xl font-bold text-white flex-shrink-0 font-display', accentBg)} style={{ width: 58, height: 58 }}>
                   {initial}
                 </span>
               )}
-              <div className="mt-3 font-display text-2xl font-bold text-gray-800">{displayName || 'Your name'}</div>
-              {tagline && <div className="text-sm text-rose-400 italic mt-1">&ldquo;{tagline}&rdquo;</div>}
-              {genres.length > 0 && (
-                <div className="mt-3 inline-flex items-center gap-1.5 bg-purple-50 px-3.5 py-1.5 rounded-full">
-                  <Sparkles size={13} className="text-purple-400" />
-                  <span className="text-[13px] font-display italic font-bold text-purple-500">{viewerType}</span>
-                </div>
-              )}
-              {bio && <p className="text-[13px] text-gray-500 leading-relaxed mt-3.5">{bio}</p>}
-            </div>
-
-            {/* Stats */}
-            <div className="glass rounded-[22px] p-4 mb-4">
-              <div className="flex items-center">
-                <Stat icon="🍿" n={stats.watched} label="Watched" />
-                <Div />
-                <Stat icon="⭐" n={stats.reviews} label="Reviews" />
-                <Div />
-                <Stat icon="📊" n={stats.avg > 0 ? stats.avg : '—'} label="Avg" />
-                <Div />
-                <Stat icon={stats.topReaction ? REACTION_EMOJI[stats.topReaction] || '🍿' : '✨'} n={stats.topReaction || '—'} label="Top react" small />
+              <div className="min-w-0 flex-1">
+                <div className="font-display text-xl font-bold text-gray-800 leading-tight">{displayName || 'Your name'}</div>
+                {genres.length > 0 && (
+                  <div className="text-[12px] text-purple-500 font-display italic font-bold leading-tight">✨ {viewerType}</div>
+                )}
+                {tagline && <div className="text-[11.5px] text-rose-400 italic truncate">&ldquo;{tagline}&rdquo;</div>}
               </div>
             </div>
 
-            {/* Now watching (only if set) */}
+            {bio && <p className="text-[12px] text-gray-500 leading-snug mt-2.5">{bio}</p>}
+
+            {/* Stats strip */}
+            <div className="flex items-center mt-3 py-2.5 border-t border-b" style={{ borderColor: '#f3d8e2' }}>
+              <MiniStat icon="🍿" n={stats.watched} label="Watched" />
+              <MiniDiv />
+              <MiniStat icon="⭐" n={stats.reviews} label="Reviews" />
+              <MiniDiv />
+              <MiniStat icon="📊" n={stats.avg > 0 ? stats.avg : '—'} label="Avg" />
+              <MiniDiv />
+              <MiniStat icon={stats.topReaction ? REACTION_EMOJI[stats.topReaction] || '🍿' : '✨'} n="" label="React" />
+            </div>
+
+            {/* Now watching — slim strip */}
             {showNowWatching && (
-              <div className="glass rounded-[22px] p-4 mb-4">
-                <div className="text-[10px] font-semibold text-gray-400 mb-2.5 uppercase tracking-wide">Now watching</div>
-                <div className="rounded-2xl p-3.5 flex items-center gap-3.5" style={{ background: 'linear-gradient(100deg,#e0457b,#a855f7)' }}>
-                  <div className="w-12 h-[68px] rounded-lg flex-shrink-0 flex items-center justify-center text-xl overflow-hidden" style={{ background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.25)' }}>
-                    {nowWatchingPoster ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={nowWatchingPoster} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <span className="cp-pop">🍿</span>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <span className="cp-live" />
-                      <span className="text-[10px] font-bold uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.9)' }}>Watching now</span>
-                    </div>
-                    <div className="text-[17px] font-bold text-white mt-0.5 truncate">{nowWatching}</div>
-                    <div className="text-[11px]" style={{ color: 'rgba(255,255,255,0.75)' }}>{daysAgoLabel(nowStartedAt)}</div>
-                  </div>
+              <div className="mt-3 rounded-[14px] p-2.5 flex items-center gap-2.5" style={{ background: 'linear-gradient(100deg,#e0457b,#a855f7)' }}>
+                <div className="rounded-[7px] flex-shrink-0 flex items-center justify-center overflow-hidden" style={{ width: 30, height: 43, background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.25)' }}>
+                  {nowWatchingPoster ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={nowWatchingPoster} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="cp-pop text-sm">🍿</span>
+                  )}
                 </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="cp-live" />
+                    <span className="text-[8px] font-bold uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.9)' }}>Watching now</span>
+                  </div>
+                  <div className="text-[14px] font-bold text-white leading-tight truncate">{nowWatching}</div>
+                </div>
+                <span className="text-[9px] flex-shrink-0" style={{ color: 'rgba(255,255,255,0.7)' }}>{daysAgoLabel(nowStartedAt)}</span>
               </div>
             )}
 
-            {/* Genres (only picked) */}
+            {/* Genres — compact wrap */}
             {genres.length > 0 && (
-              <div className="glass rounded-[22px] p-4 mb-4">
-                <div className="text-[10px] font-semibold text-gray-400 mb-3 uppercase tracking-wide">My genres</div>
-                <div className="flex flex-wrap gap-2">
+              <div className="mt-3">
+                <div className="text-[9px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Genres</div>
+                <div className="flex flex-wrap gap-1.5">
                   {genres.map(name => {
                     const g = genreByName(name)
                     return (
-                      <span key={name} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] font-semibold"
+                      <span key={name} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11.5px] font-semibold"
                         style={g ? { background: g.bg, color: g.text } : undefined}>
                         {g ? `${g.emoji} ` : ''}{name}
                       </span>
@@ -347,25 +334,24 @@ function ProfileInner() {
               </div>
             )}
 
-            {/* If I had to pick */}
+            {/* If I had to pick — 2-col grid */}
             {hasAnyPick && (
-              <div className="glass rounded-[22px] p-4 mb-4">
-                <div className="text-[10px] font-semibold text-gray-400 mb-3 uppercase tracking-wide">If I had to pick…</div>
-                <div className="flex flex-col gap-3.5">
+              <div className="mt-3">
+                <div className="text-[9px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">If I had to pick…</div>
+                <div className="grid grid-cols-2 gap-2.5">
                   {PICK_SLOTS.filter(s => picks[s.key]).map(s => {
                     const p = picks[s.key]
                     return (
-                      <div key={s.key} className="flex gap-3 items-center">
-                        <div className="w-[46px] h-[66px] rounded-lg flex-shrink-0 flex items-center justify-center text-xl bg-rose-50 overflow-hidden">
+                      <div key={s.key} className="flex gap-2 items-center min-w-0">
+                        <div className="rounded-md flex-shrink-0 flex items-center justify-center bg-rose-50 overflow-hidden" style={{ width: 30, height: 43 }}>
                           {p.poster ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img src={p.poster} alt={p.title} className="w-full h-full object-cover" />
-                          ) : <span>{s.emoji}</span>}
+                          ) : <span className="text-sm">{s.emoji}</span>}
                         </div>
                         <div className="min-w-0">
-                          <div className="text-[10px] uppercase tracking-wide text-rose-400 font-bold">{s.emoji} {s.label}</div>
-                          <div className="text-[15px] font-semibold text-gray-800 truncate">{p.title}</div>
-                          {p.year && <div className="text-[11px] text-gray-400">{p.year}{p.type === 'tv' ? ' · TV' : ''}</div>}
+                          <div className="text-[8.5px] uppercase tracking-wide text-rose-400 font-bold leading-tight">{s.short}</div>
+                          <div className="text-[12px] font-semibold text-gray-800 leading-tight truncate">{p.title}</div>
                         </div>
                       </div>
                     )
@@ -373,38 +359,38 @@ function ProfileInner() {
                 </div>
               </div>
             )}
-          </>
+          </div>
         )}
 
         {/* ===================== EDIT MODE ===================== */}
         {mode === 'edit' && (
           <>
             {/* Header edit */}
-            <div className="glass rounded-[22px] p-6 mb-4 text-center">
+            <div className="glass rounded-[20px] p-5 mb-3 text-center">
               <div className="relative inline-block">
                 <button type="button" onClick={() => fileRef.current?.click()} className="group relative block mx-auto" title="Change photo">
                   {avatarUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={avatarUrl} alt={displayName || 'You'} className="rounded-full object-cover ring-2 ring-white shadow" style={{ width: 88, height: 88 }} />
+                    <img src={avatarUrl} alt={displayName || 'You'} className="rounded-full object-cover ring-2 ring-white shadow" style={{ width: 76, height: 76 }} />
                   ) : (
-                    <span className={clsx('rounded-full flex items-center justify-center text-4xl font-bold text-white font-display', accentBg)} style={{ width: 88, height: 88 }}>
+                    <span className={clsx('rounded-full flex items-center justify-center text-3xl font-bold text-white font-display', accentBg)} style={{ width: 76, height: 76 }}>
                       {initial}
                     </span>
                   )}
                   <span className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                    {uploading ? <Loader2 size={20} className="text-white animate-spin" /> : <Camera size={20} className="text-white" />}
+                    {uploading ? <Loader2 size={18} className="text-white animate-spin" /> : <Camera size={18} className="text-white" />}
                   </span>
                 </button>
                 <input ref={fileRef} type="file" accept="image/*" onChange={handlePickFile} className="hidden" />
               </div>
-              <p className="text-[11px] text-gray-300 mt-2">Tap photo to change</p>
+              <p className="text-[11px] text-gray-300 mt-1.5">Tap photo to change</p>
               {uploadError && <p className="text-xs text-red-500 mt-1">{uploadError}</p>}
 
               <input
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
                 placeholder="Display name"
-                className="w-full text-center bg-white/80 border border-rose-100 rounded-xl px-3 py-2.5 text-sm mt-3 outline-none focus:border-rose-300"
+                className="w-full text-center bg-white/80 border border-rose-100 rounded-xl px-3 py-2 text-sm mt-2.5 outline-none focus:border-rose-300"
               />
               <input
                 value={tagline}
@@ -415,7 +401,7 @@ function ProfileInner() {
             </div>
 
             {/* Accent */}
-            <div className="glass rounded-[22px] p-5 mb-4">
+            <div className="glass rounded-[20px] p-4 mb-3">
               <label className="block text-[10px] font-semibold text-gray-400 mb-2 uppercase tracking-wide">Accent color</label>
               <div className="flex gap-2">
                 {accents.map((a) => (
@@ -426,9 +412,9 @@ function ProfileInner() {
               </div>
             </div>
 
-            {/* Now watching — search the full catalog. Lifted while open. */}
-            <div className={clsx('glass rounded-[22px] p-5 mb-4 relative', nowOpen ? 'z-50' : 'z-10')}>
-              <label className="block text-[10px] font-semibold text-gray-400 mb-2.5 uppercase tracking-wide">Now watching</label>
+            {/* Now watching */}
+            <div className={clsx('glass rounded-[20px] p-4 mb-3 relative', nowOpen ? 'z-50' : 'z-10')}>
+              <label className="block text-[10px] font-semibold text-gray-400 mb-2 uppercase tracking-wide">Now watching</label>
               <CatalogPicker
                 value={nowWatchingChoice}
                 onChange={setNowWatchingChoice}
@@ -446,14 +432,14 @@ function ProfileInner() {
             </div>
 
             {/* Genres grid */}
-            <div className="glass rounded-[22px] p-5 mb-4">
-              <label className="block text-[10px] font-semibold text-gray-400 mb-3 uppercase tracking-wide">My genres — tap to pick</label>
-              <div className="flex flex-wrap gap-2">
+            <div className="glass rounded-[20px] p-4 mb-3">
+              <label className="block text-[10px] font-semibold text-gray-400 mb-2 uppercase tracking-wide">My genres — tap to pick</label>
+              <div className="flex flex-wrap gap-1.5">
                 {GENRES.map(g => {
                   const on = genres.includes(g.name)
                   return (
                     <button key={g.name} onClick={() => toggleGenre(g.name)}
-                      className={clsx('inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] font-semibold border transition-all',
+                      className={clsx('inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[12px] font-semibold border transition-all',
                         !on && 'bg-white/80 text-gray-400 border-rose-100 hover:border-rose-300')}
                       style={on ? { background: g.bg, color: g.text, borderColor: g.bg } : undefined}>
                       <span>{g.emoji}</span> {g.name}
@@ -463,10 +449,10 @@ function ProfileInner() {
               </div>
             </div>
 
-            {/* If I had to pick — search the full catalog. Lifted above Bio while open. */}
-            <div className={clsx('glass rounded-[22px] p-5 mb-4 relative', aPickerIsOpen ? 'z-50' : 'z-10')}>
-              <label className="block text-[10px] font-semibold text-gray-400 mb-3 uppercase tracking-wide">If I had to pick…</label>
-              <div className="flex flex-col gap-3">
+            {/* If I had to pick */}
+            <div className={clsx('glass rounded-[20px] p-4 mb-3 relative', aPickerIsOpen ? 'z-50' : 'z-10')}>
+              <label className="block text-[10px] font-semibold text-gray-400 mb-2 uppercase tracking-wide">If I had to pick…</label>
+              <div className="flex flex-col gap-2.5">
                 {PICK_SLOTS.map(s => {
                   const p = picks[s.key]
                   const choice: CatalogChoice | null = p
@@ -487,8 +473,8 @@ function ProfileInner() {
               </div>
             </div>
 
-            {/* Bio. Pushed behind the picker cards while a picker is open. */}
-            <div className={clsx('glass rounded-[22px] p-5 mb-4 relative', (aPickerIsOpen || nowOpen) ? 'z-0' : 'z-10')}>
+            {/* Bio */}
+            <div className={clsx('glass rounded-[20px] p-4 mb-3 relative', (aPickerIsOpen || nowOpen) ? 'z-0' : 'z-10')}>
               <div className="flex items-center justify-between mb-1">
                 <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Bio</label>
                 <span className={clsx('text-[11px]', bio.length > BIO_MAX - 20 ? 'text-rose-400' : 'text-gray-300')}>{bio.length}/{BIO_MAX}</span>
@@ -502,26 +488,24 @@ function ProfileInner() {
               />
             </div>
 
-            {/* Save error */}
             {saveError && (
               <p className="text-xs text-red-500 bg-red-50 rounded-lg px-3 py-2 mb-3">
                 Couldn&apos;t save: {saveError}
               </p>
             )}
 
-            {/* Save / cancel */}
             <div className="flex gap-2">
               <button
                 onClick={save}
                 disabled={saving || uploading}
-                className="flex-1 flex items-center justify-center gap-2 bg-rose-500 hover:bg-rose-600 disabled:bg-rose-300 text-white font-medium py-3 rounded-xl text-sm transition-all"
+                className="flex-1 flex items-center justify-center gap-2 bg-rose-500 hover:bg-rose-600 disabled:bg-rose-300 text-white font-medium py-2.5 rounded-xl text-sm transition-all"
               >
                 {saving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />} Save profile
               </button>
               <button
                 onClick={cancelEdit}
                 disabled={saving}
-                className="px-5 py-3 rounded-xl text-sm text-gray-500 hover:bg-gray-100 transition-all"
+                className="px-5 py-2.5 rounded-xl text-sm text-gray-500 hover:bg-gray-100 transition-all"
               >
                 Cancel
               </button>
@@ -533,18 +517,18 @@ function ProfileInner() {
   )
 }
 
-function Stat({ icon, n, label, small }: { icon: string; n: number | string; label: string; small?: boolean }) {
+function MiniStat({ icon, n, label }: { icon: string; n: number | string; label: string }) {
   return (
     <div className="text-center flex-1 min-w-0">
-      <span className="text-[15px] block mb-0.5">{icon}</span>
-      <div className={clsx('font-bold text-rose-500 tracking-tight truncate', small ? 'text-[13px] pt-1' : 'text-[21px]')}>{n}</div>
-      <div className="text-[10px] uppercase tracking-wide text-gray-400 font-semibold mt-0.5">{label}</div>
+      <div className="text-[13px] leading-none">{icon}</div>
+      {n !== '' && <div className="text-[15px] font-bold text-rose-500 leading-none mt-1">{n}</div>}
+      <div className="text-[8px] uppercase tracking-wide text-gray-400 font-semibold mt-1">{label}</div>
     </div>
   )
 }
 
-function Div() {
-  return <div className="w-px self-stretch my-0.5" style={{ background: '#f3d8e2' }} />
+function MiniDiv() {
+  return <div className="w-px self-stretch my-1" style={{ background: '#f3d8e2' }} />
 }
 
 export default function ProfilePage() {
