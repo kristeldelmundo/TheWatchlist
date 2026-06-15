@@ -10,7 +10,7 @@ import {
 import { Session, User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 
-// One "if I had to pick" slot.
+// One legacy "if I had to pick" slot.
 export interface ProfilePick {
   title: string
   year: string | null
@@ -19,6 +19,16 @@ export interface ProfilePick {
 }
 // Keyed by slot id: comfort | cry | guilty | hill
 export type ProfilePicks = Record<string, ProfilePick>
+
+// One editable custom pick slot (new MySpace-style model).
+export interface CustomPickItem {
+  emoji: string
+  label: string
+  title: string
+  year: string | null
+  poster: string | null
+  type: string | null
+}
 
 export interface Profile {
   id: string
@@ -35,6 +45,10 @@ export interface Profile {
   picks: ProfilePicks | null
   bg_image: string | null
   bg_type: string | null
+  custom_picks: CustomPickItem[] | null
+  font_family: string | null
+  font_scale: string | null
+  text_color: string | null
 }
 
 interface AuthContextValue {

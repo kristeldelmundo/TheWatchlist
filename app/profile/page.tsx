@@ -4,12 +4,16 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import Navbar from '@/components/layout/Navbar'
 import RequireAuth from '@/components/auth/RequireAuth'
 import { useAuth } from '@/components/auth/AuthProvider'
-import type { ProfilePicks, ProfilePick } from '@/components/auth/AuthProvider'
+import type { CustomPickItem } from '@/components/auth/AuthProvider'
 import { supabase } from '@/lib/supabase'
-import { Loader2, Check, Camera, Pencil, Image as ImageIcon } from 'lucide-react'
+import { Loader2, Check, Camera, Pencil, Image as ImageIcon, Plus, X } from 'lucide-react'
 import { clsx } from 'clsx'
 import { GENRES, genreByName, deriveViewerType } from '@/lib/profile'
-import { ACCENTS, accentByValue, BG_PRESETS, resolveBgStyle, isDarkBg } from '@/lib/theme'
+import {
+  ACCENTS, accentByValue, BG_PRESETS, resolveBgStyle, isDarkBg,
+  FONTS, fontByValue, FONT_SCALES, fontScaleValue, TEXT_COLORS,
+  DEFAULT_PICK_SLOTS, legacyPicksToCustom,
+} from '@/lib/theme'
 import CatalogPicker, { CatalogChoice } from '@/components/ui/CatalogPicker'
 
 const BIO_MAX = 160
@@ -21,13 +25,6 @@ const REACTION_EMOJI: Record<string, string> = {
   'Plot twist!': '🤯', 'Fell asleep': '😴', Meh: '😐', 'Would rewatch': '🔁',
   'Perfect date night': '💑', "So bad it's good": '💀',
 }
-
-const PICK_SLOTS: { key: string; emoji: string; label: string; short: string }[] = [
-  { key: 'comfort', emoji: '🛋️', label: 'Comfort movie', short: 'Comfort' },
-  { key: 'cry', emoji: '😢', label: 'Last great cry', short: 'Last cry' },
-  { key: 'guilty', emoji: '🙈', label: 'Guilty pleasure', short: 'Guilty' },
-  { key: 'hill', emoji: '⛰️', label: "Hill I'll die on", short: "Hill I'll die on" },
-]
 
 interface Stats {
   watched: number
@@ -50,11 +47,16 @@ function ProfileInner() {
   const [nowWatching, setNowWatching] = useState('')
   const [nowWatchingPoster, setNowWatchingPoster] = useState<string | null>(null)
   const [nowStartedAt, setNowStartedAt] = useState<string | null>(null)
-  const [picks, setPicks] = useState<ProfilePicks>({})
 
-  // Theme background.
+  // Editable custom picks (replaces the fixed comfort/cry/guilty/hill slots).
+  const [customPicks, setCustomPicks] = useState<CustomPickItem[]>([])
+
+  // Theme background + style.
   const [bgType, setBgType] = useState<string | null>(null)
   const [bgImage, setBgImage] = useState<string | null>(null)
+  const [fontFamily, setFontFamily] = useState('default')
+  const [fontScale, setFontScale] = useState('base')
+  const [textColor, setTextColor] = useState('default')
 
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -66,15 +68,9 @@ function ProfileInner() {
 
   const [stats, setStats] = useState<Stats>({ watched: 0, reviews: 0, avg: 0, topReaction: null })
 
-  const [openSlot, setOpenSlot] = useState<string | null>(null)
+  // Index of the custom-pick slot whose CatalogPicker is open (lift z-index).
+  const [openSlot, setOpenSlot] = useState<number | null>(null)
   const [nowOpen, setNowOpen] = useState(false)
-
-  function handleSlotOpenChange(slotKey: string, isOpen: boolean) {
-    setOpenSlot(prev => {
-      if (isOpen) return slotKey
-      return prev === slotKey ? null : prev
-    })
-  }
 
   const hydrate = useCallback(() => {
     if (!profile) return
@@ -86,10 +82,18 @@ function ProfileInner() {
     setGenres(profile.fav_genres || [])
     setNowWatching(profile.now_watching || '')
     setNowStartedAt(profile.now_watching_started_at || null)
-    setPicks(profile.picks || {})
     setBgType(profile.bg_type || null)
     setBgImage(profile.bg_image || null)
+    setFontFamily(profile.font_family || 'default')
+    setFontScale(profile.font_scale || 'base')
+    setTextColor(profile.text_color || 'default')
     setNowWatchingPoster(null)
+    // Prefer custom_picks; otherwise convert legacy picks once so nothing is lost.
+    if (profile.custom_picks && profile.custom_picks.length > 0) {
+      setCustomPicks(profile.custom_picks)
+    } else {
+      setCustomPicks(legacyPicksToCustom(profile.picks))
+    }
   }, [profile])
 
   useEffect(() => { hydrate() }, [hydrate])
@@ -185,13 +189,26 @@ function ProfileInner() {
     setGenres(prev => prev.includes(name) ? prev.filter(g => g !== name) : [...prev, name])
   }
 
-  function setPick(slotKey: string, choice: CatalogChoice | null) {
-    if (!choice) {
-      setPicks(prev => { const next = { ...prev }; delete next[slotKey]; return next })
-      return
-    }
-    const pick: ProfilePick = { title: choice.title, year: choice.year, poster: choice.poster, type: choice.type }
-    setPicks(prev => ({ ...prev, [slotKey]: pick }))
+  // ---- custom pick editing ----
+  function updatePickField(idx: number, field: keyof CustomPickItem, value: string) {
+    setCustomPicks(prev => prev.map((p, i) => i === idx ? { ...p, [field]: value } : p))
+  }
+  function setPickTitle(idx: number, choice: CatalogChoice | null) {
+    setCustomPicks(prev => prev.map((p, i) => {
+      if (i !== idx) return p
+      if (!choice) return { ...p, title: '', year: null, poster: null, type: null }
+      return { ...p, title: choice.title, year: choice.year, poster: choice.poster, type: choice.type }
+    }))
+  }
+  function addPickSlot() {
+    setCustomPicks(prev => [...prev, { emoji: '🎬', label: 'New category', title: '', year: null, poster: null, type: null }])
+  }
+  function removePickSlot(idx: number) {
+    setCustomPicks(prev => prev.filter((_, i) => i !== idx))
+    setOpenSlot(null)
+  }
+  function handleSlotOpenChange(idx: number, isOpen: boolean) {
+    setOpenSlot(prev => (isOpen ? idx : (prev === idx ? null : prev)))
   }
 
   function setNowWatchingChoice(choice: CatalogChoice | null) {
@@ -217,6 +234,8 @@ function ProfileInner() {
       nowWatching.trim() && nowWatching.trim() !== (profile?.now_watching || '').trim()
         ? new Date().toISOString()
         : nowStartedAt
+    // Drop empty slots (no title) before saving.
+    const cleanPicks = customPicks.filter(p => p.title && p.title.trim())
     const { error } = await supabase
       .from('profiles')
       .update({
@@ -229,9 +248,12 @@ function ProfileInner() {
         viewer_type: viewerType,
         now_watching: nowWatching.trim() || null,
         now_watching_started_at: nowWatching.trim() ? startedAt : null,
-        picks,
+        custom_picks: cleanPicks,
         bg_type: bgType,
         bg_image: bgImage,
+        font_family: fontFamily,
+        font_scale: fontScale,
+        text_color: textColor,
         updated_at: new Date().toISOString(),
       })
       .eq('id', user.id)
@@ -251,7 +273,6 @@ function ProfileInner() {
   }
 
   const accentObj = accentByValue(accent)
-  const accentBg = accentObj.cls
 
   const initial = (displayName || user?.email || 'Y').charAt(0).toUpperCase()
   const viewerType = deriveViewerType(genres, stats.avg)
@@ -260,13 +281,30 @@ function ProfileInner() {
     ? { title: nowWatching, year: null, poster: nowWatchingPoster, type: 'movie' }
     : null
 
-  const hasAnyPick = PICK_SLOTS.some(s => picks[s.key])
+  const visiblePicks = customPicks.filter(p => p.title && p.title.trim())
+  const hasAnyPick = visiblePicks.length > 0
   const aPickerIsOpen = openSlot !== null
 
-  // Background applied behind the whole page.
+  // Background + style.
   const bgStyle = resolveBgStyle(bgType, bgImage)
   const darkBg = isDarkBg(bgType, bgImage)
   const headingColor = darkBg ? 'text-white' : 'text-gray-800'
+
+  const fontStack = fontByValue(fontFamily).stack
+  const scale = fontScaleValue(fontScale)
+  const customTextColor = textColor && textColor !== 'default'
+    ? (TEXT_COLORS.find(c => c.value === textColor)?.hex || undefined)
+    : undefined
+
+  // The view card inherits font + base size + (optional) text color.
+  const cardStyle: React.CSSProperties = {
+    fontFamily: fontStack,
+    fontSize: `${scale}em`,
+    ...(customTextColor ? { color: customTextColor } : {}),
+  }
+  // When a custom text color is set, let it cascade to the normally-gray text.
+  const nameColor = customTextColor || undefined
+  const bodyColor = customTextColor || undefined
 
   return (
     <div className="min-h-screen" style={bgStyle}>
@@ -296,27 +334,27 @@ function ProfileInner() {
 
         {/* ===================== VIEW MODE — one wide card ===================== */}
         {mode === 'view' && (
-          <div className="cp-card rounded-[22px] p-7 shadow-lg shadow-black/5">
+          <div className="cp-card rounded-[22px] p-7 shadow-lg shadow-black/5" style={cardStyle}>
             {/* Header row */}
             <div className="flex gap-5 items-center">
               {avatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={avatarUrl} alt={displayName || 'You'} className="rounded-full object-cover flex-shrink-0 ring-2 ring-white shadow" style={{ width: 76, height: 76 }} />
               ) : (
-                <span className={clsx('rounded-full flex items-center justify-center text-3xl font-bold text-white flex-shrink-0 font-display', accentBg)} style={{ width: 76, height: 76 }}>
+                <span className="rounded-full flex items-center justify-center text-3xl font-bold text-white flex-shrink-0 font-display" style={{ width: 76, height: 76, background: accentObj.ring }}>
                   {initial}
                 </span>
               )}
               <div className="min-w-0 flex-1">
-                <div className="font-display text-2xl font-bold text-gray-800 leading-tight">{displayName || 'Your name'}</div>
+                <div className="font-display text-2xl font-bold leading-tight" style={{ color: nameColor || '#1f2937' }}>{displayName || 'Your name'}</div>
                 {genres.length > 0 && (
-                  <div className="text-sm text-purple-500 font-display italic font-bold leading-tight mt-0.5">✨ {viewerType}</div>
+                  <div className="text-sm font-display italic font-bold leading-tight mt-0.5" style={{ color: customTextColor || '#a855f7' }}>✨ {viewerType}</div>
                 )}
-                {tagline && <div className="text-[13px] text-rose-400 italic truncate mt-0.5">&ldquo;{tagline}&rdquo;</div>}
+                {tagline && <div className="text-[13px] italic truncate mt-0.5" style={{ color: customTextColor || '#fb7093' }}>&ldquo;{tagline}&rdquo;</div>}
               </div>
             </div>
 
-            {bio && <p className="text-[13.5px] text-gray-600 leading-relaxed mt-4">{bio}</p>}
+            {bio && <p className="text-[13.5px] leading-relaxed mt-4" style={{ color: bodyColor || '#4b5563' }}>{bio}</p>}
 
             {/* Stats strip */}
             <div className="flex items-center mt-5 py-4 border-t border-b" style={{ borderColor: 'rgba(243,216,226,0.8)' }}>
@@ -354,7 +392,7 @@ function ProfileInner() {
             {/* Genres */}
             {genres.length > 0 && (
               <div className="mt-5">
-                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-2.5">Genres</div>
+                <div className="text-[10px] font-bold uppercase tracking-wide mb-2.5" style={{ color: customTextColor || '#9ca3af' }}>Genres</div>
                 <div className="flex flex-wrap gap-2">
                   {genres.map(name => {
                     const g = genreByName(name)
@@ -369,28 +407,25 @@ function ProfileInner() {
               </div>
             )}
 
-            {/* If I had to pick — 2-col grid */}
+            {/* If I had to pick — editable categories, 2-col grid */}
             {hasAnyPick && (
               <div className="mt-5">
-                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-2.5">If I had to pick…</div>
+                <div className="text-[10px] font-bold uppercase tracking-wide mb-2.5" style={{ color: customTextColor || '#9ca3af' }}>If I had to pick…</div>
                 <div className="grid grid-cols-2 gap-4">
-                  {PICK_SLOTS.filter(s => picks[s.key]).map(s => {
-                    const p = picks[s.key]
-                    return (
-                      <div key={s.key} className="flex gap-2.5 items-center min-w-0">
-                        <div className="rounded-md flex-shrink-0 flex items-center justify-center bg-rose-50 overflow-hidden" style={{ width: 40, height: 58 }}>
-                          {p.poster ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={p.poster} alt={p.title} className="w-full h-full object-cover" />
-                          ) : <span className="text-lg">{s.emoji}</span>}
-                        </div>
-                        <div className="min-w-0">
-                          <div className="text-[9.5px] uppercase tracking-wide text-rose-400 font-bold leading-tight">{s.short}</div>
-                          <div className="text-[13.5px] font-semibold text-gray-800 leading-tight truncate mt-0.5">{p.title}</div>
-                        </div>
+                  {visiblePicks.map((p, i) => (
+                    <div key={i} className="flex gap-2.5 items-center min-w-0">
+                      <div className="rounded-md flex-shrink-0 flex items-center justify-center bg-rose-50 overflow-hidden" style={{ width: 40, height: 58 }}>
+                        {p.poster ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={p.poster} alt={p.title} className="w-full h-full object-cover" />
+                        ) : <span className="text-lg">{p.emoji || '🎬'}</span>}
                       </div>
-                    )
-                  })}
+                      <div className="min-w-0">
+                        <div className="text-[9.5px] uppercase tracking-wide font-bold leading-tight" style={{ color: customTextColor || '#fb7093' }}>{p.emoji} {p.label}</div>
+                        <div className="text-[13.5px] font-semibold leading-tight truncate mt-0.5" style={{ color: nameColor || '#1f2937' }}>{p.title}</div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
@@ -408,7 +443,7 @@ function ProfileInner() {
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={avatarUrl} alt={displayName || 'You'} className="rounded-full object-cover ring-2 ring-white shadow" style={{ width: 84, height: 84 }} />
                   ) : (
-                    <span className={clsx('rounded-full flex items-center justify-center text-3xl font-bold text-white font-display', accentBg)} style={{ width: 84, height: 84 }}>
+                    <span className="rounded-full flex items-center justify-center text-3xl font-bold text-white font-display" style={{ width: 84, height: 84, background: accentObj.ring }}>
                       {initial}
                     </span>
                   )}
@@ -435,7 +470,7 @@ function ProfileInner() {
               />
             </div>
 
-            {/* Bio — moved up: edit your bio right after your name/photo */}
+            {/* Bio */}
             <div className="cp-card rounded-[20px] p-4 mb-3 relative z-10">
               <div className="flex items-center justify-between mb-1">
                 <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Bio</label>
@@ -450,13 +485,14 @@ function ProfileInner() {
               />
             </div>
 
-            {/* Theme: accent + background */}
+            {/* Theme: accent + background + style */}
             <div className="cp-card rounded-[20px] p-4 mb-3">
               <label className="block text-[10px] font-semibold text-gray-400 mb-2 uppercase tracking-wide">Accent color</label>
               <div className="flex flex-wrap gap-2 mb-4">
                 {ACCENTS.map((a) => (
                   <button key={a.value} onClick={() => setAccent(a.value)}
-                    className={clsx('w-8 h-8 rounded-full transition-all', a.cls, accent === a.value ? 'ring-2 ring-offset-2 ring-gray-400 scale-110' : 'opacity-60 hover:opacity-100')}
+                    className={clsx('w-8 h-8 rounded-full transition-all', accent === a.value ? 'ring-2 ring-offset-2 ring-gray-400 scale-110' : 'opacity-70 hover:opacity-100')}
+                    style={{ background: a.ring }}
                     title={a.label} />
                 ))}
               </div>
@@ -475,7 +511,6 @@ function ProfileInner() {
                 })}
               </div>
 
-              {/* Upload background */}
               <button
                 type="button"
                 onClick={() => bgFileRef.current?.click()}
@@ -491,6 +526,41 @@ function ProfileInner() {
                   Reset to default background
                 </button>
               )}
+
+              {/* Font */}
+              <label className="block text-[10px] font-semibold text-gray-400 mb-2 mt-5 uppercase tracking-wide">Font</label>
+              <div className="flex flex-wrap gap-2">
+                {FONTS.map(f => (
+                  <button key={f.value} onClick={() => setFontFamily(f.value)}
+                    className={clsx('px-3 py-1.5 rounded-lg text-[13px] border transition-all',
+                      fontFamily === f.value ? 'border-rose-300 bg-rose-50 text-rose-600' : 'border-rose-100 text-gray-500 hover:border-rose-300')}
+                    style={{ fontFamily: f.stack }}>
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Size */}
+              <label className="block text-[10px] font-semibold text-gray-400 mb-2 mt-4 uppercase tracking-wide">Text size</label>
+              <div className="flex gap-2">
+                {FONT_SCALES.map(s => (
+                  <button key={s.value} onClick={() => setFontScale(s.value)}
+                    className={clsx('w-10 h-9 rounded-lg border font-bold transition-all',
+                      fontScale === s.value ? 'border-rose-300 bg-rose-50 text-rose-600' : 'border-rose-100 text-gray-400 hover:border-rose-300')}>
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Text color */}
+              <label className="block text-[10px] font-semibold text-gray-400 mb-2 mt-4 uppercase tracking-wide">Text color</label>
+              <div className="flex flex-wrap gap-2">
+                {TEXT_COLORS.map(c => (
+                  <button key={c.value} onClick={() => setTextColor(c.value)}
+                    className={clsx('w-8 h-8 rounded-full border transition-all', textColor === c.value ? 'ring-2 ring-offset-2 ring-gray-400 scale-110' : 'opacity-80 hover:opacity-100', c.value === 'white' ? 'border-gray-200' : 'border-transparent')}
+                    style={{ background: c.hex }} title={c.label} />
+                ))}
+              </div>
             </div>
 
             {/* Now watching */}
@@ -530,28 +600,50 @@ function ProfileInner() {
               </div>
             </div>
 
-            {/* If I had to pick */}
+            {/* If I had to pick — editable categories */}
             <div className={clsx('cp-card rounded-[20px] p-4 mb-3 relative', aPickerIsOpen ? 'z-50' : 'z-10')}>
-              <label className="block text-[10px] font-semibold text-gray-400 mb-2 uppercase tracking-wide">If I had to pick…</label>
-              <div className="flex flex-col gap-2.5">
-                {PICK_SLOTS.map(s => {
-                  const p = picks[s.key]
-                  const choice: CatalogChoice | null = p
+              <label className="block text-[10px] font-semibold text-gray-400 mb-1 uppercase tracking-wide">My categories</label>
+              <p className="text-[11px] text-gray-400 mb-3">Name each one (emoji + label), pick a title, add as many as you like.</p>
+              <div className="flex flex-col gap-3.5">
+                {customPicks.map((p, i) => {
+                  const choice: CatalogChoice | null = p.title
                     ? { title: p.title, year: p.year, poster: p.poster, type: (p.type as CatalogChoice['type']) || 'movie' }
                     : null
                   return (
-                    <div key={s.key}>
-                      <div className="text-[11px] text-rose-500 font-semibold mb-1">{s.emoji} {s.label}</div>
+                    <div key={i} className="rounded-xl border border-rose-100 bg-white/60 p-2.5">
+                      <div className="flex items-center gap-2 mb-2">
+                        <input
+                          value={p.emoji}
+                          onChange={e => updatePickField(i, 'emoji', e.target.value.slice(0, 2))}
+                          className="w-10 text-center bg-white border border-rose-100 rounded-lg px-1 py-1.5 text-base outline-none focus:border-rose-300"
+                          aria-label="Emoji"
+                        />
+                        <input
+                          value={p.label}
+                          onChange={e => updatePickField(i, 'label', e.target.value.slice(0, 30))}
+                          placeholder="Category name (e.g. Best soundtrack)"
+                          className="flex-1 bg-white border border-rose-100 rounded-lg px-2.5 py-1.5 text-[13px] outline-none focus:border-rose-300"
+                        />
+                        <button onClick={() => removePickSlot(i)} className="text-gray-300 hover:text-rose-500 flex-shrink-0 p-1" aria-label="Remove category">
+                          <X size={16} />
+                        </button>
+                      </div>
                       <CatalogPicker
                         value={choice}
-                        onChange={(c) => setPick(s.key, c)}
-                        onOpenChange={(o) => handleSlotOpenChange(s.key, o)}
+                        onChange={(c) => setPickTitle(i, c)}
+                        onOpenChange={(o) => handleSlotOpenChange(i, o)}
                         placeholder="Search any movie or show…"
                       />
                     </div>
                   )
                 })}
               </div>
+              <button
+                onClick={addPickSlot}
+                className="mt-3 w-full flex items-center justify-center gap-1.5 border border-dashed border-rose-200 rounded-xl py-2 text-[13px] font-medium text-rose-500 hover:bg-rose-50 transition-all"
+              >
+                <Plus size={15} /> Add a category
+              </button>
             </div>
 
             {saveError && (

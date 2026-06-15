@@ -1,13 +1,14 @@
-// Shared theme bits: accent presets + background presets for the profile.
+// Shared theme bits: accent presets + background presets + font/size/color
+// customization for the profile.
 
 export interface Accent {
   value: string
   label: string
-  cls: string      // tailwind bg- class for the avatar/initials circle
-  ring: string     // hex used for selected ring (and small accents)
+  cls: string      // tailwind bg- class (legacy; swatches now use `ring` inline)
+  ring: string     // hex used for the swatch, selected ring, stat numbers, avatar
 }
 
-// Expanded accent set (was rose/plum/amber/teal).
+// Expanded accent set.
 export const ACCENTS: Accent[] = [
   { value: 'rose', label: 'Rose', cls: 'bg-rose-500', ring: '#f43f5e' },
   { value: 'purple', label: 'Plum', cls: 'bg-purple-500', ring: '#a855f7' },
@@ -49,17 +50,14 @@ export function bgPresetById(id: string): BgPreset | undefined {
   return BG_PRESETS.find(p => p.id === id)
 }
 
-// True when a background is dark (so the header text outside the card should be light).
 export function isDarkBg(bgType: string | null | undefined, bgImage: string | null | undefined): boolean {
   if (bgType === 'preset' && bgImage) {
     const id = bgImage.replace(/^preset:/, '')
     return ['midnight', 'cocoa', 'noir'].includes(id)
   }
-  // Uploaded photos: assume potentially dark, but we keep the card legible regardless.
   return bgType === 'upload'
 }
 
-// Resolve the stored bg fields into a React style object for the page wrapper.
 export function resolveBgStyle(
   bgType: string | null | undefined,
   bgImage: string | null | undefined,
@@ -76,6 +74,93 @@ export function resolveBgStyle(
     const preset = bgPresetById(bgImage.replace(/^preset:/, ''))
     if (preset) return { background: preset.css, backgroundAttachment: 'fixed' }
   }
-  // Default CinePop gradient.
   return { background: BG_PRESETS[0].css, backgroundAttachment: 'fixed' }
+}
+
+// ----------------------------------------------------------------------------
+// MySpace-style customization: fonts, sizes, text color, editable pick slots.
+// ----------------------------------------------------------------------------
+
+export interface FontChoice {
+  value: string
+  label: string
+  stack: string   // CSS font-family value
+}
+
+// Curated fonts. The two Google fonts (Playfair/DM-serif via --font-playfair,
+// Space Mono via --font-space-mono) are already loaded by the app; the rest are
+// safe system stacks so nothing extra needs fetching.
+export const FONTS: FontChoice[] = [
+  { value: 'default', label: 'Default', stack: 'var(--font-inter), system-ui, sans-serif' },
+  { value: 'serif', label: 'Elegant serif', stack: 'var(--font-playfair), Georgia, serif' },
+  { value: 'mono', label: 'Typewriter', stack: 'var(--font-space-mono), monospace' },
+  { value: 'rounded', label: 'Rounded', stack: '"Trebuchet MS", "Segoe UI", system-ui, sans-serif' },
+  { value: 'classic', label: 'Classic', stack: 'Georgia, "Times New Roman", serif' },
+  { value: 'system', label: 'Clean sans', stack: '"Helvetica Neue", Arial, sans-serif' },
+]
+
+export function fontByValue(value: string | null | undefined): FontChoice {
+  return FONTS.find(f => f.value === value) || FONTS[0]
+}
+
+// Text size scale — multiplies the card's base font size.
+export const FONT_SCALES: { value: string; label: string; scale: number }[] = [
+  { value: 'sm', label: 'S', scale: 0.9 },
+  { value: 'base', label: 'M', scale: 1 },
+  { value: 'lg', label: 'L', scale: 1.15 },
+]
+
+export function fontScaleValue(value: string | null | undefined): number {
+  return (FONT_SCALES.find(s => s.value === value) || FONT_SCALES[1]).scale
+}
+
+// Text color options for card text (name/bio/labels). null = default theme colors.
+export const TEXT_COLORS: { value: string; label: string; hex: string }[] = [
+  { value: 'default', label: 'Default', hex: '#3a2a32' },
+  { value: 'ink', label: 'Ink', hex: '#1f2937' },
+  { value: 'rose', label: 'Rose', hex: '#be185d' },
+  { value: 'plum', label: 'Plum', hex: '#7e22ce' },
+  { value: 'teal', label: 'Teal', hex: '#0f766e' },
+  { value: 'amber', label: 'Amber', hex: '#b45309' },
+  { value: 'white', label: 'White', hex: '#ffffff' },
+]
+
+// One editable "if I had to pick" slot.
+export interface CustomPick {
+  emoji: string
+  label: string
+  title: string
+  year: string | null
+  poster: string | null
+  type: string | null
+}
+
+// Default slots used when a profile has nothing yet.
+export const DEFAULT_PICK_SLOTS: { emoji: string; label: string }[] = [
+  { emoji: '🛋️', label: 'Comfort movie' },
+  { emoji: '😢', label: 'Last great cry' },
+  { emoji: '🙈', label: 'Guilty pleasure' },
+  { emoji: '⛰️', label: "Hill I'll die on" },
+]
+
+// Convert the legacy fixed `picks` object → ordered custom_picks array, so
+// existing profiles keep their choices when the UI switches to editable slots.
+export function legacyPicksToCustom(
+  picks: Record<string, { title: string; year: string | null; poster: string | null; type: string | null }> | null | undefined,
+): CustomPick[] {
+  const order: { key: string; emoji: string; label: string }[] = [
+    { key: 'comfort', emoji: '🛋️', label: 'Comfort movie' },
+    { key: 'cry', emoji: '😢', label: 'Last great cry' },
+    { key: 'guilty', emoji: '🙈', label: 'Guilty pleasure' },
+    { key: 'hill', emoji: '⛰️', label: "Hill I'll die on" },
+  ]
+  if (!picks) return []
+  const out: CustomPick[] = []
+  for (const slot of order) {
+    const p = picks[slot.key]
+    if (p && p.title) {
+      out.push({ emoji: slot.emoji, label: slot.label, title: p.title, year: p.year, poster: p.poster, type: p.type })
+    }
+  }
+  return out
 }
