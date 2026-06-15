@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { postLoginDestination } from '@/lib/circles'
 import { Loader2, Mail, Lock, Heart } from 'lucide-react'
 import { clsx } from 'clsx'
 
@@ -48,7 +49,8 @@ export default function AuthPage() {
       if (error) {
         setError(error.message)
       } else {
-        router.push('/watchlist')
+        // If they arrived via an invite link, finish the join; else watchlist.
+        router.push(postLoginDestination())
       }
     }
     setLoading(false)

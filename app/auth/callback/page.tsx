@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { postLoginDestination } from '@/lib/circles'
 import { Loader2 } from 'lucide-react'
 
 // Google (and other OAuth) providers redirect back here after sign-in.
@@ -12,18 +13,19 @@ export default function AuthCallbackPage() {
 
   useEffect(() => {
     // Supabase auto-detects the session from the URL on load.
-    // Once it's ready, send them to the watchlist.
+    // Once it's ready, send them on — to an invite-link join if one is
+    // pending (they opened an invite link while logged out), else watchlist.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
         if (session) {
-          router.replace('/watchlist')
+          router.replace(postLoginDestination())
         }
       },
     )
 
     // Fallback: check immediately in case the event already fired
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) router.replace('/watchlist')
+      if (session) router.replace(postLoginDestination())
       else {
         // No session after a short wait → send back to login
         setTimeout(() => router.replace('/login'), 2000)
