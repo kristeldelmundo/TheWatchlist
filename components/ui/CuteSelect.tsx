@@ -24,6 +24,9 @@ interface Props {
   variant?: 'compact' | 'full'
   // When true, shows a search box at the top of the open list to filter by label.
   searchable?: boolean
+  // Notifies the parent when the dropdown opens/closes, so it can manage
+  // z-index of surrounding cards (avoids the panel hiding behind later cards).
+  onOpenChange?: (open: boolean) => void
   className?: string
 }
 
@@ -38,6 +41,7 @@ export default function CuteSelect({
   placeholder = 'Choose…',
   variant = 'full',
   searchable = false,
+  onOpenChange,
   className,
 }: Props) {
   const [open, setOpen] = useState(false)
@@ -51,12 +55,18 @@ export default function CuteSelect({
     ? options.filter(o => o.label.toLowerCase().includes(query.trim().toLowerCase()))
     : options
 
+  // Helper so every open/close path also notifies the parent.
+  function setOpenState(next: boolean) {
+    setOpen(next)
+    onOpenChange?.(next)
+  }
+
   useEffect(() => {
     function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpenState(false)
     }
     function handleKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setOpen(false)
+      if (e.key === 'Escape') setOpenState(false)
     }
     document.addEventListener('mousedown', handleClick)
     document.addEventListener('keydown', handleKey)
@@ -64,6 +74,7 @@ export default function CuteSelect({
       document.removeEventListener('mousedown', handleClick)
       document.removeEventListener('keydown', handleKey)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Clear the query and focus the search box each time we open.
@@ -92,7 +103,7 @@ export default function CuteSelect({
     >
       <button
         type="button"
-        onClick={() => setOpen(o => !o)}
+        onClick={() => setOpenState(!open)}
         aria-haspopup="listbox"
         aria-expanded={open}
         className={clsx(
@@ -150,7 +161,7 @@ export default function CuteSelect({
                   aria-selected={isSel}
                   onClick={() => {
                     onChange(o.value)
-                    setOpen(false)
+                    setOpenState(false)
                   }}
                   className={clsx(
                     'w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors border-b border-rose-50 last:border-0',
