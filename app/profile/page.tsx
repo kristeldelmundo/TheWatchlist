@@ -5,13 +5,11 @@ import Navbar from '@/components/layout/Navbar'
 import RequireAuth from '@/components/auth/RequireAuth'
 import { useAuth } from '@/components/auth/AuthProvider'
 import type { ProfilePicks, ProfilePick } from '@/components/auth/AuthProvider'
-import { useCircle } from '@/components/auth/CircleProvider'
 import { supabase } from '@/lib/supabase'
-import { Loader2, Check, Camera, X, Sparkles, Pencil } from 'lucide-react'
+import { Loader2, Check, Camera, Sparkles, Pencil } from 'lucide-react'
 import { clsx } from 'clsx'
 import { GENRES, genreByName, deriveViewerType } from '@/lib/profile'
-import CuteSelect, { CuteOption } from '@/components/ui/CuteSelect'
-import { WatchlistItem } from '@/types'
+import CatalogPicker, { CatalogChoice } from '@/components/ui/CatalogPicker'
 
 const BIO_MAX = 160
 const TAGLINE_MAX = 80
@@ -40,7 +38,6 @@ interface Stats {
 
 function ProfileInner() {
   const { user, profile, refreshProfile } = useAuth()
-  const { activeCircle } = useCircle()
 
   const [mode, setMode] = useState<'view' | 'edit'>('view')
 
@@ -51,6 +48,7 @@ function ProfileInner() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [genres, setGenres] = useState<string[]>([])
   const [nowWatching, setNowWatching] = useState('')
+  const [nowWatchingPoster, setNowWatchingPoster] = useState<string | null>(null)
   const [nowStartedAt, setNowStartedAt] = useState<string | null>(null)
   const [picks, setPicks] = useState<ProfilePicks>({})
 
@@ -61,15 +59,12 @@ function ProfileInner() {
   const fileRef = useRef<HTMLInputElement>(null)
 
   const [stats, setStats] = useState<Stats>({ watched: 0, reviews: 0, avg: 0, topReaction: null })
-  const [items, setItems] = useState<WatchlistItem[]>([])
 
-  // Which pick slot's dropdown is currently open (so we can lift its card
-  // above the following Bio card and stop the list being covered).
+  // Which pick slot's dropdown is open (so we can lift its card above the Bio).
   const [openSlot, setOpenSlot] = useState<string | null>(null)
-  // True while the Now Watching picker is open (lift that card too).
+  // True while the Now Watching picker is open.
   const [nowOpen, setNowOpen] = useState(false)
 
-  // Called by each pick CuteSelect when it opens/closes.
   function handleSlotOpenChange(slotKey: string, isOpen: boolean) {
     setOpenSlot(prev => {
       if (isOpen) return slotKey
@@ -89,20 +84,11 @@ function ProfileInner() {
     setNowWatching(profile.now_watching || '')
     setNowStartedAt(profile.now_watching_started_at || null)
     setPicks(profile.picks || {})
+    // Recover the now-watching poster from picks if one matches (best effort).
+    setNowWatchingPoster(null)
   }, [profile])
 
   useEffect(() => { hydrate() }, [hydrate])
-
-  // Library items for the pickers.
-  useEffect(() => {
-    async function loadItems() {
-      if (!activeCircle) { setItems([]); return }
-      const { data } = await supabase
-        .from('watchlist_items').select('*').eq('circle_id', activeCircle.id)
-      if (data) setItems(data)
-    }
-    loadItems()
-  }, [activeCircle])
 
   // Auto stats.
   const loadStats = useCallback(async () => {
@@ -168,23 +154,21 @@ function ProfileInner() {
     setGenres(prev => prev.includes(name) ? prev.filter(g => g !== name) : [...prev, name])
   }
 
-  // Set a pick slot from a library item id (or clear it).
-  function setPick(slotKey: string, itemId: string) {
-    if (!itemId) {
+  // Set a pick slot from a catalog choice (or clear it).
+  function setPick(slotKey: string, choice: CatalogChoice | null) {
+    if (!choice) {
       setPicks(prev => { const next = { ...prev }; delete next[slotKey]; return next })
       return
     }
-    const item = items.find(i => i.id === itemId)
-    if (!item) return
-    const pick: ProfilePick = { title: item.title, year: item.year, poster: item.poster, type: item.type }
+    const pick: ProfilePick = { title: choice.title, year: choice.year, poster: choice.poster, type: choice.type }
     setPicks(prev => ({ ...prev, [slotKey]: pick }))
   }
 
-  // Set now-watching from a library item id (store the title), or clear it.
-  function setNowWatchingFromItem(itemId: string) {
-    if (!itemId) { setNowWatching(''); setNowStartedAt(null); return }
-    const item = items.find(i => i.id === itemId)
-    if (item) setNowWatching(item.title)
+  // Set now-watching from a catalog choice (store title + poster), or clear it.
+  function setNowWatchingChoice(choice: CatalogChoice | null) {
+    if (!choice) { setNowWatching(''); setNowWatchingPoster(null); setNowStartedAt(null); return }
+    setNowWatching(choice.title)
+    setNowWatchingPoster(choice.poster)
   }
 
   function cancelEdit() {
@@ -222,7 +206,6 @@ function ProfileInner() {
       .eq('id', user.id)
 
     if (error) {
-      // Surface the real reason instead of silently failing.
       setSaveError(error.message || 'Could not save. Please try again.')
       setSaving(false)
       return
@@ -251,21 +234,10 @@ function ProfileInner() {
   const initial = (displayName || user?.email || 'Y').charAt(0).toUpperCase()
   const viewerType = deriveViewerType(genres, stats.avg)
 
-  // Options for the pickers (poster thumbnails).
-  const pickerOptions: CuteOption[] = items.map(i => ({
-    value: i.id,
-    label: i.title,
-    sublabel: i.year || undefined,
-    leading: (
-      <div className="rounded-md overflow-hidden flex-shrink-0 bg-rose-50" style={{ width: 28, height: 40 }}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        {i.poster ? <img src={i.poster} alt="" className="w-full h-full object-cover" /> : null}
-      </div>
-    ),
-  }))
-
-  // The item id whose title matches the current now-watching (for picker value).
-  const nowWatchingItemId = items.find(i => i.title === nowWatching)?.id || ''
+  // The current now-watching as a CatalogChoice (for the picker's display value).
+  const nowWatchingChoice: CatalogChoice | null = nowWatching.trim()
+    ? { title: nowWatching, year: null, poster: nowWatchingPoster, type: 'movie' }
+    : null
 
   const hasAnyPick = PICK_SLOTS.some(s => picks[s.key])
   const aPickerIsOpen = openSlot !== null
@@ -337,8 +309,13 @@ function ProfileInner() {
               <div className="glass rounded-[22px] p-4 mb-4">
                 <div className="text-[10px] font-semibold text-gray-400 mb-2.5 uppercase tracking-wide">Now watching</div>
                 <div className="rounded-2xl p-3.5 flex items-center gap-3.5" style={{ background: 'linear-gradient(100deg,#e0457b,#a855f7)' }}>
-                  <div className="w-12 h-[68px] rounded-lg flex-shrink-0 flex items-center justify-center text-xl" style={{ background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.25)' }}>
-                    <span className="cp-pop">🍿</span>
+                  <div className="w-12 h-[68px] rounded-lg flex-shrink-0 flex items-center justify-center text-xl overflow-hidden" style={{ background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.25)' }}>
+                    {nowWatchingPoster ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={nowWatchingPoster} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="cp-pop">🍿</span>
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
@@ -449,25 +426,18 @@ function ProfileInner() {
               </div>
             </div>
 
-            {/* Now watching — pick from Library. Lifted while open. */}
+            {/* Now watching — search the full catalog. Lifted while open. */}
             <div className={clsx('glass rounded-[22px] p-5 mb-4 relative', nowOpen ? 'z-50' : 'z-10')}>
               <label className="block text-[10px] font-semibold text-gray-400 mb-2.5 uppercase tracking-wide">Now watching</label>
-              {items.length === 0 ? (
-                <p className="text-xs text-gray-300">Add titles to your Library first, then pick what you&apos;re watching here.</p>
-              ) : (
-                <CuteSelect
-                  variant="full"
-                  searchable
-                  value={nowWatchingItemId}
-                  onChange={setNowWatchingFromItem}
-                  onOpenChange={setNowOpen}
-                  placeholder="Pick what you're watching… 🍿"
-                  options={pickerOptions}
-                />
-              )}
+              <CatalogPicker
+                value={nowWatchingChoice}
+                onChange={setNowWatchingChoice}
+                onOpenChange={setNowOpen}
+                placeholder="Search any movie or show… 🍿"
+              />
               {nowWatching && (
                 <button
-                  onClick={() => { setNowWatching(''); setNowStartedAt(null) }}
+                  onClick={() => setNowWatchingChoice(null)}
                   className="mt-2 text-[11px] text-gray-400 hover:text-rose-500"
                 >
                   Clear now watching
@@ -493,32 +463,31 @@ function ProfileInner() {
               </div>
             </div>
 
-            {/* If I had to pick — editable. Lifted above the Bio card while a
-                picker is open so its list is never covered. */}
+            {/* If I had to pick — search the full catalog. Lifted above Bio while open. */}
             <div className={clsx('glass rounded-[22px] p-5 mb-4 relative', aPickerIsOpen ? 'z-50' : 'z-10')}>
               <label className="block text-[10px] font-semibold text-gray-400 mb-3 uppercase tracking-wide">If I had to pick…</label>
-              {items.length === 0 && (
-                <p className="text-xs text-gray-300 mb-2">Add titles to your Library first, then you can pick them here.</p>
-              )}
               <div className="flex flex-col gap-3">
-                {PICK_SLOTS.map(s => (
-                  <div key={s.key}>
-                    <div className="text-[11px] text-rose-500 font-semibold mb-1">{s.emoji} {s.label}</div>
-                    <CuteSelect
-                      variant="full"
-                      searchable
-                      value={items.find(i => picks[s.key] && i.title === picks[s.key].title)?.id || ''}
-                      onChange={(id) => setPick(s.key, id)}
-                      onOpenChange={(o) => handleSlotOpenChange(s.key, o)}
-                      placeholder="Pick a title…"
-                      options={pickerOptions}
-                    />
-                  </div>
-                ))}
+                {PICK_SLOTS.map(s => {
+                  const p = picks[s.key]
+                  const choice: CatalogChoice | null = p
+                    ? { title: p.title, year: p.year, poster: p.poster, type: (p.type as CatalogChoice['type']) || 'movie' }
+                    : null
+                  return (
+                    <div key={s.key}>
+                      <div className="text-[11px] text-rose-500 font-semibold mb-1">{s.emoji} {s.label}</div>
+                      <CatalogPicker
+                        value={choice}
+                        onChange={(c) => setPick(s.key, c)}
+                        onOpenChange={(o) => handleSlotOpenChange(s.key, o)}
+                        placeholder="Search any movie or show…"
+                      />
+                    </div>
+                  )
+                })}
               </div>
             </div>
 
-            {/* Bio. Pushed behind the picks card while a picker is open. */}
+            {/* Bio. Pushed behind the picker cards while a picker is open. */}
             <div className={clsx('glass rounded-[22px] p-5 mb-4 relative', (aPickerIsOpen || nowOpen) ? 'z-0' : 'z-10')}>
               <div className="flex items-center justify-between mb-1">
                 <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Bio</label>
@@ -533,7 +502,7 @@ function ProfileInner() {
               />
             </div>
 
-            {/* Save error (surfaces the real reason if a save fails) */}
+            {/* Save error */}
             {saveError && (
               <p className="text-xs text-red-500 bg-red-50 rounded-lg px-3 py-2 mb-3">
                 Couldn&apos;t save: {saveError}
