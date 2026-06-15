@@ -35,6 +35,7 @@ export interface Review {
   thoughts: string | null
   reactions: string[]
   created_at: string
+  edited_at?: string | null
   // Legacy columns — kept so older reviews still render.
   rating_k?: number
   rating_j?: number
