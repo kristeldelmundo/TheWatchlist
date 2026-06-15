@@ -100,6 +100,25 @@ export function inviteLink(code: string): string {
   return `/join/${code}`
 }
 
+// localStorage key where the join page stashes an invite code when a
+// logged-out user opens an invite link. Consumed right after they log in.
+export const PENDING_INVITE_KEY = 'cinepop_pending_invite'
+
+// Where should we send the user right after a successful login?
+// If they arrived via an invite link while logged out, finish the join;
+// otherwise go to the watchlist. Reads (and clears) the saved invite code.
+export function postLoginDestination(): string {
+  if (typeof window === 'undefined') return '/watchlist'
+  let code: string | null = null
+  try {
+    code = window.localStorage.getItem(PENDING_INVITE_KEY)
+    if (code) window.localStorage.removeItem(PENDING_INVITE_KEY)
+  } catch {
+    code = null
+  }
+  return code ? `/join/${code}` : '/watchlist'
+}
+
 interface FoundUser {
   id: string
   display_name: string | null
