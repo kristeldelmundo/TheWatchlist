@@ -6,7 +6,7 @@ import RequireAuth from '@/components/auth/RequireAuth'
 import { useAuth } from '@/components/auth/AuthProvider'
 import type { CustomPickItem } from '@/components/auth/AuthProvider'
 import { supabase } from '@/lib/supabase'
-import { Loader2, Check, Camera, Pencil, Image as ImageIcon, Plus, X } from 'lucide-react'
+import { Loader2, Check, Camera, Pencil, Image as ImageIcon, Plus, X, Share2 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { GENRES, genreByName, deriveViewerType } from '@/lib/profile'
 import {
@@ -15,6 +15,7 @@ import {
   DEFAULT_PICK_SLOTS, legacyPicksToCustom,
 } from '@/lib/theme'
 import CatalogPicker, { CatalogChoice } from '@/components/ui/CatalogPicker'
+import ShareProfileModal from '@/components/profile/ShareProfileModal'
 
 const BIO_MAX = 160
 const TAGLINE_MAX = 80
@@ -65,6 +66,10 @@ function ProfileInner() {
   const [bgUploading, setBgUploading] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
   const bgFileRef = useRef<HTMLInputElement>(null)
+
+  // Share modal + ref to the view card (for image export).
+  const [shareOpen, setShareOpen] = useState(false)
+  const cardRef = useRef<HTMLDivElement>(null)
 
   const [stats, setStats] = useState<Stats>({ watched: 0, reviews: 0, avg: 0, topReaction: null })
 
@@ -306,6 +311,11 @@ function ProfileInner() {
   const nameColor = customTextColor || undefined
   const bodyColor = customTextColor || undefined
 
+  // Public share URL for this profile.
+  const shareUrl = user
+    ? (typeof window !== 'undefined' ? `${window.location.origin}/u/${user.id}` : `https://cinepop.live/u/${user.id}`)
+    : ''
+
   return (
     <div className="min-h-screen" style={bgStyle}>
       <Navbar />
@@ -323,18 +333,26 @@ function ProfileInner() {
             My <span className="gradient-text italic">Profile</span>
           </h1>
           {mode === 'view' && (
-            <button
-              onClick={() => setMode('edit')}
-              className="flex items-center gap-1.5 bg-white/80 hover:bg-white text-rose-600 text-sm font-semibold px-4 py-2 rounded-full transition-all shadow-sm"
-            >
-              <Pencil size={14} /> Edit
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShareOpen(true)}
+                className="flex items-center gap-1.5 bg-white/80 hover:bg-white text-rose-600 text-sm font-semibold px-4 py-2 rounded-full transition-all shadow-sm"
+              >
+                <Share2 size={14} /> Share
+              </button>
+              <button
+                onClick={() => setMode('edit')}
+                className="flex items-center gap-1.5 bg-white/80 hover:bg-white text-rose-600 text-sm font-semibold px-4 py-2 rounded-full transition-all shadow-sm"
+              >
+                <Pencil size={14} /> Edit
+              </button>
+            </div>
           )}
         </div>
 
         {/* ===================== VIEW MODE — one wide card ===================== */}
         {mode === 'view' && (
-          <div className="cp-card rounded-[22px] p-7 shadow-lg shadow-black/5" style={cardStyle}>
+          <div ref={cardRef} className="cp-card rounded-[22px] p-7 shadow-lg shadow-black/5" style={cardStyle}>
             {/* Header row */}
             <div className="flex gap-5 items-center">
               {avatarUrl ? (
@@ -657,6 +675,14 @@ function ProfileInner() {
           </>
         )}
       </main>
+
+      <ShareProfileModal
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
+        shareUrl={shareUrl}
+        cardRef={cardRef}
+        fileBaseName={displayName || 'profile'}
+      />
     </div>
   )
 }
