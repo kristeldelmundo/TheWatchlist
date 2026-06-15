@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Navbar from "@/components/layout/Navbar";
-import { WatchlistUser } from "@/types";
 import { supabase } from "@/lib/supabase";
 import {
   fetchTrendingMovies,
@@ -14,6 +13,7 @@ import { Film, Tv, Plus, Check, TrendingUp, Clapperboard } from "lucide-react";
 import { clsx } from "clsx";
 import RequireAuth from "@/components/auth/RequireAuth";
 import { useCircle } from "@/components/auth/CircleProvider";
+import { useAuth } from "@/components/auth/AuthProvider";
 
 type Tab = "movie" | "tv";
 
@@ -21,15 +21,17 @@ const VISIBLE = 10; // how many to show at once
 
 function TrendingInner() {
   const { activeCircle } = useCircle();
+  const { user, profile } = useAuth();
   const [tab, setTab] = useState<Tab>("movie");
   const [movies, setMovies] = useState<TrendingItem[]>([]);
   const [shows, setShows] = useState<TrendingItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [who, setWho] = useState<WatchlistUser>("Kristel");
   // ids that have been added so they drop out and the next slides up
   const [removedIds, setRemovedIds] = useState<Set<number>>(new Set());
   // briefly show a tick on the item just added before it slides away
   const [justAdded, setJustAdded] = useState<number | null>(null);
+
+  const myName = profile?.display_name || user?.email?.split("@")[0] || "Me";
 
   useEffect(() => {
     Promise.all([fetchTrendingMovies(), fetchTrendingTV()]).then(([m, t]) => {
@@ -40,14 +42,15 @@ function TrendingInner() {
   }, []);
 
   async function addToWatchlist(item: TrendingItem) {
-    if (!activeCircle) return;
+    if (!activeCircle || !user) return;
     // Show the tick immediately
     setJustAdded(item.id);
 
     const newItem = {
       title: item.title,
       type: item.type,
-      added_by: who,
+      added_by: myName,
+      added_by_id: user.id,
       circle_id: activeCircle.id,
       poster: item.poster,
       plot: item.overview,
@@ -102,42 +105,13 @@ function TrendingInner() {
           </p>
           {activeCircle && (
             <p className="text-xs text-rose-300 mt-2">
-              Adding to {activeCircle.emoji} {activeCircle.name}
+              Adding to {activeCircle.emoji} {activeCircle.name} as {myName}
             </p>
           )}
         </div>
       </div>
 
       <main className="max-w-2xl mx-auto px-4 py-8">
-        {/* Adding-as toggle */}
-        <div className="flex items-center justify-center gap-2 mb-6">
-          <span className="text-sm font-medium text-gray-500">Add picks as:</span>
-          {(["Kristel", "Eric"] as WatchlistUser[]).map((u) => (
-            <button
-              key={u}
-              onClick={() => setWho(u)}
-              className={clsx(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold transition-all",
-                who === u
-                  ? u === "Kristel"
-                    ? "bg-rose-500 text-white shadow-md shadow-rose-200"
-                    : "bg-purple-500 text-white shadow-md shadow-purple-200"
-                  : "bg-gray-100 text-gray-400 hover:bg-gray-200",
-              )}
-            >
-              <span
-                className={clsx(
-                  "w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold",
-                  who === u ? "bg-white/30" : "bg-gray-200",
-                )}
-              >
-                {u.charAt(0)}
-              </span>
-              {u}
-            </button>
-          ))}
-        </div>
-
         {/* Movie / TV tabs */}
         <div className="flex items-center justify-center gap-2 mb-6">
           <button
@@ -246,25 +220,13 @@ function TrendingInner() {
                   {/* Add button */}
                   <div className="flex-shrink-0">
                     {added ? (
-                      <div
-                        className={clsx(
-                          "flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-medium",
-                          who === "Eric"
-                            ? "bg-purple-100 text-purple-600"
-                            : "bg-rose-100 text-rose-600",
-                        )}
-                      >
+                      <div className="flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-medium bg-rose-100 text-rose-600">
                         <Check size={14} /> Added!
                       </div>
                     ) : (
                       <button
                         onClick={() => addToWatchlist(item)}
-                        className={clsx(
-                          "flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-medium text-white transition-all hover:scale-105",
-                          who === "Kristel"
-                            ? "bg-rose-500 hover:bg-rose-600"
-                            : "bg-purple-500 hover:bg-purple-600",
-                        )}
+                        className="flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-medium text-white transition-all hover:scale-105 bg-rose-500 hover:bg-rose-600"
                       >
                         <Plus size={14} /> Add
                       </button>
