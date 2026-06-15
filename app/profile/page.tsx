@@ -62,6 +62,19 @@ function ProfileInner() {
   const [stats, setStats] = useState<Stats>({ watched: 0, reviews: 0, avg: 0, topReaction: null })
   const [items, setItems] = useState<WatchlistItem[]>([])
 
+  // Which pick slot's dropdown is currently open (so we can lift its card
+  // above the following Bio card and stop the list being covered).
+  const [openSlot, setOpenSlot] = useState<string | null>(null)
+
+  // Called by each pick CuteSelect when it opens/closes.
+  function handleSlotOpenChange(slotKey: string, isOpen: boolean) {
+    setOpenSlot(prev => {
+      if (isOpen) return slotKey
+      // Only clear if this slot was the one marked open.
+      return prev === slotKey ? null : prev
+    })
+  }
+
   // Hydrate local state from the profile.
   const hydrate = useCallback(() => {
     if (!profile) return
@@ -167,6 +180,7 @@ function ProfileInner() {
 
   function cancelEdit() {
     hydrate() // discard unsaved changes
+    setOpenSlot(null)
     setMode('view')
   }
 
@@ -197,6 +211,7 @@ function ProfileInner() {
     await refreshProfile()
     setNowStartedAt(nowWatching.trim() ? startedAt : null)
     setSaving(false)
+    setOpenSlot(null)
     setMode('view')
   }
 
@@ -229,6 +244,7 @@ function ProfileInner() {
   }))
 
   const hasAnyPick = PICK_SLOTS.some(s => picks[s.key])
+  const aPickerIsOpen = openSlot !== null
 
   return (
     <>
@@ -262,7 +278,7 @@ function ProfileInner() {
             <div className="glass rounded-[22px] p-6 mb-4 text-center">
               {avatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={avatarUrl} alt={displayName || 'You'} className="w-22 h-22 rounded-full object-cover mx-auto ring-2 ring-white shadow" style={{ width: 88, height: 88 }} />
+                <img src={avatarUrl} alt={displayName || 'You'} className="rounded-full object-cover mx-auto ring-2 ring-white shadow" style={{ width: 88, height: 88 }} />
               ) : (
                 <span className={clsx('rounded-full flex items-center justify-center text-4xl font-bold text-white mx-auto font-display', accentBg)} style={{ width: 88, height: 88 }}>
                   {initial}
@@ -446,8 +462,9 @@ function ProfileInner() {
               </div>
             </div>
 
-            {/* If I had to pick — editable */}
-            <div className="glass rounded-[22px] p-5 mb-4">
+            {/* If I had to pick — editable. Lifted above the Bio card while a
+                picker is open so its list is never covered. */}
+            <div className={clsx('glass rounded-[22px] p-5 mb-4 relative', aPickerIsOpen ? 'z-50' : 'z-10')}>
               <label className="block text-[10px] font-semibold text-gray-400 mb-3 uppercase tracking-wide">If I had to pick…</label>
               {items.length === 0 && (
                 <p className="text-xs text-gray-300 mb-2">Add titles to your Library first, then you can pick them here.</p>
@@ -461,6 +478,7 @@ function ProfileInner() {
                       searchable
                       value={items.find(i => picks[s.key] && i.title === picks[s.key].title)?.id || ''}
                       onChange={(id) => setPick(s.key, id)}
+                      onOpenChange={(o) => handleSlotOpenChange(s.key, o)}
                       placeholder="Pick a title…"
                       options={pickerOptions}
                     />
@@ -469,8 +487,8 @@ function ProfileInner() {
               </div>
             </div>
 
-            {/* Bio */}
-            <div className="glass rounded-[22px] p-5 mb-4">
+            {/* Bio. Pushed behind the picks card while a picker is open. */}
+            <div className={clsx('glass rounded-[22px] p-5 mb-4 relative', aPickerIsOpen ? 'z-0' : 'z-10')}>
               <div className="flex items-center justify-between mb-1">
                 <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Bio</label>
                 <span className={clsx('text-[11px]', bio.length > BIO_MAX - 20 ? 'text-rose-400' : 'text-gray-300')}>{bio.length}/{BIO_MAX}</span>
