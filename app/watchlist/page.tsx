@@ -5,6 +5,7 @@ import Link from "next/link";
 import Navbar from "@/components/layout/Navbar";
 import MovieCard from "@/components/ui/MovieCard";
 import AddMovieForm from "@/components/ui/AddMovieForm";
+import Onboarding from "@/components/ui/Onboarding";
 import { WatchlistItem, MediaType, WatchlistUser } from "@/types";
 import { supabase } from "@/lib/supabase";
 import { fetchMovieInfo, fetchMovieById } from "@/lib/omdb";
@@ -151,6 +152,7 @@ function WatchlistInner() {
   if (!circlesLoading && !activeCircle) {
     return (
       <>
+        <Onboarding />
         <Navbar />
         <main className="max-w-2xl mx-auto px-4 py-16 text-center">
           <p className="text-5xl mb-4">🍿</p>
@@ -175,6 +177,7 @@ function WatchlistInner() {
 
   return (
     <>
+      <Onboarding />
       <Navbar />
       <main className="max-w-2xl mx-auto px-4 py-8">
         <div className="mb-6">
