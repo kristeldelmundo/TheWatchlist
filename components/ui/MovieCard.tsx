@@ -11,8 +11,29 @@ interface Props {
   onMarkWatched: (id: string) => void;
 }
 
+// Give each person a stable color based on their name, so every member
+// gets a consistent avatar color (not just Kristel/Eric).
+const PALETTE = [
+  { bg: "bg-rose-100", text: "text-rose-500" },
+  { bg: "bg-purple-100", text: "text-purple-500" },
+  { bg: "bg-amber-100", text: "text-amber-600" },
+  { bg: "bg-teal-100", text: "text-teal-600" },
+  { bg: "bg-sky-100", text: "text-sky-600" },
+  { bg: "bg-fuchsia-100", text: "text-fuchsia-600" },
+];
+
+function colorFor(name: string) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return PALETTE[Math.abs(hash) % PALETTE.length];
+}
+
 export default function MovieCard({ item, onDelete, onMarkWatched }: Props) {
-  const initial = item.added_by.charAt(0);
+  const addedBy = item.added_by || "Someone";
+  const initial = addedBy.charAt(0).toUpperCase();
+  const color = colorFor(addedBy);
 
   return (
     <div
@@ -81,24 +102,14 @@ export default function MovieCard({ item, onDelete, onMarkWatched }: Props) {
             <span
               className={clsx(
                 "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0",
-                item.added_by === "Kristel"
-                  ? "bg-rose-100 text-rose-500"
-                  : "bg-purple-100 text-purple-500",
+                color.bg,
+                color.text,
               )}
             >
               {initial}
             </span>
             <span className="text-xs text-gray-400">
-              <span
-                className={clsx(
-                  "font-medium",
-                  item.added_by === "Kristel"
-                    ? "text-rose-500"
-                    : "text-purple-500",
-                )}
-              >
-                {item.added_by}
-              </span>{" "}
+              <span className={clsx("font-medium", color.text)}>{addedBy}</span>{" "}
               added this
             </span>
             {item.watched && (
