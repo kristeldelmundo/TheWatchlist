@@ -2,6 +2,8 @@
 
 _Last updated: 2026-06-15. Written so a fresh Claude (or you) can pick up exactly where we left off._
 
+> 📌 **2026-06-15 update:** Pushed this trivial commit to try to trigger a fresh Vercel deployment for `master` (latest commit `03302c8`), since auto-deploy appeared stalled (root cause #2 below). If `cinepop.live/u/...` is still 404 after this, the GitHub↔Vercel auto-deploy connection likely needs reconnecting in Vercel → Settings → Git.
+
 ## What CinePop is
 A movie/TV watchlist app for couples/friends/family ("circles").
 - **Stack:** Next.js 14 + TypeScript + Tailwind + Supabase + OMDB + TMDB, deployed on **Vercel**.
