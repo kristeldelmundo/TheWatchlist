@@ -19,6 +19,7 @@ import ShareProfileModal from '@/components/profile/ShareProfileModal'
 
 const BIO_MAX = 160
 const TAGLINE_MAX = 80
+const PICK_LABEL_MAX = 50
 const NOW_WATCHING_STALE_DAYS = 10
 
 const REACTION_EMOJI: Record<string, string> = {
@@ -725,7 +726,7 @@ function ProfileInner() {
                         />
                         <input
                           value={p.label}
-                          onChange={e => updatePickField(i, 'label', e.target.value.slice(0, 30))}
+                          onChange={e => updatePickField(i, 'label', e.target.value.slice(0, PICK_LABEL_MAX))}
                           placeholder="Category name (e.g. Best soundtrack)"
                           className="flex-1 bg-white border border-rose-100 rounded-lg px-2.5 py-1.5 text-[13px] outline-none focus:border-rose-300"
                         />
