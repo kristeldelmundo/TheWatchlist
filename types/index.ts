@@ -26,12 +26,20 @@ export interface Review {
   circle_id: string | null
   title: string
   poster: string | null
-  rating_k: number
-  rating_j: number
-  thoughts_k: string
-  thoughts_j: string
+  // New per-reviewer model: one row per person's review.
+  reviewer_id: string | null
+  reviewer_name: string | null
+  reviewer_avatar: string | null
+  reviewer_accent: string | null
+  rating: number | null
+  thoughts: string | null
   reactions: string[]
   created_at: string
+  // Legacy columns — kept so older reviews still render.
+  rating_k?: number
+  rating_j?: number
+  thoughts_k?: string
+  thoughts_j?: string
 }
 
 export interface OMDBMovie {
