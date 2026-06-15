@@ -50,6 +50,7 @@ export interface Profile {
   font_family: string | null
   font_scale: string | null
   text_color: string | null
+  onboarding_completed: boolean
 }
 
 interface AuthContextValue {
