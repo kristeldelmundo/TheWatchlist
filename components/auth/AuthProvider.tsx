@@ -10,6 +10,16 @@ import {
 import { Session, User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 
+// One "if I had to pick" slot.
+export interface ProfilePick {
+  title: string
+  year: string | null
+  poster: string | null
+  type: string | null
+}
+// Keyed by slot id: comfort | cry | guilty | hill
+export type ProfilePicks = Record<string, ProfilePick>
+
 export interface Profile {
   id: string
   display_name: string | null
@@ -22,6 +32,7 @@ export interface Profile {
   fav_genres: string[] | null
   viewer_type: string | null
   now_watching_started_at: string | null
+  picks: ProfilePicks | null
 }
 
 interface AuthContextValue {

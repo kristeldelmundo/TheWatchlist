@@ -4,22 +4,32 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import Navbar from '@/components/layout/Navbar'
 import RequireAuth from '@/components/auth/RequireAuth'
 import { useAuth } from '@/components/auth/AuthProvider'
+import type { ProfilePicks, ProfilePick } from '@/components/auth/AuthProvider'
+import { useCircle } from '@/components/auth/CircleProvider'
 import { supabase } from '@/lib/supabase'
-import { Loader2, Check, Camera, X, Sparkles } from 'lucide-react'
+import { Loader2, Check, Camera, X, Sparkles, Pencil } from 'lucide-react'
 import { clsx } from 'clsx'
-import { GENRES, deriveViewerType } from '@/lib/profile'
+import { GENRES, genreByName, deriveViewerType } from '@/lib/profile'
+import CuteSelect, { CuteOption } from '@/components/ui/CuteSelect'
+import { WatchlistItem } from '@/types'
 
 const BIO_MAX = 160
 const TAGLINE_MAX = 80
-// Now-watching auto-clears after this many quiet days.
 const NOW_WATCHING_STALE_DAYS = 10
 
-// Reactions list mirrors the review page, used to label the top reaction.
 const REACTION_EMOJI: Record<string, string> = {
   Obsessed: '😍', 'So good': '🍿', 'We cried': '😭', 'Laughed so hard': '🤣',
   'Plot twist!': '🤯', 'Fell asleep': '😴', Meh: '😐', 'Would rewatch': '🔁',
   'Perfect date night': '💑', "So bad it's good": '💀',
 }
+
+// The four "if I had to pick" slots.
+const PICK_SLOTS: { key: string; emoji: string; label: string }[] = [
+  { key: 'comfort', emoji: '🛋️', label: 'Comfort movie' },
+  { key: 'cry', emoji: '😢', label: 'Last great cry' },
+  { key: 'guilty', emoji: '🙈', label: 'Guilty pleasure' },
+  { key: 'hill', emoji: '⛰️', label: "Hill I'll die on" },
+]
 
 interface Stats {
   watched: number
@@ -30,6 +40,10 @@ interface Stats {
 
 function ProfileInner() {
   const { user, profile, refreshProfile } = useAuth()
+  const { activeCircle } = useCircle()
+
+  const [mode, setMode] = useState<'view' | 'edit'>('view')
+
   const [displayName, setDisplayName] = useState('')
   const [accent, setAccent] = useState('rose')
   const [bio, setBio] = useState('')
@@ -38,69 +52,66 @@ function ProfileInner() {
   const [genres, setGenres] = useState<string[]>([])
   const [nowWatching, setNowWatching] = useState('')
   const [nowStartedAt, setNowStartedAt] = useState<string | null>(null)
+  const [picks, setPicks] = useState<ProfilePicks>({})
 
   const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const [stats, setStats] = useState<Stats>({ watched: 0, reviews: 0, avg: 0, topReaction: null })
+  const [items, setItems] = useState<WatchlistItem[]>([])
 
-  useEffect(() => {
-    if (profile) {
-      setDisplayName(profile.display_name || '')
-      setAccent(profile.accent_color || 'rose')
-      setBio(profile.bio || '')
-      setTagline(profile.tagline || '')
-      setAvatarUrl(profile.avatar_url || null)
-      setGenres(profile.fav_genres || [])
-      setNowWatching(profile.now_watching || '')
-      setNowStartedAt(profile.now_watching_started_at || null)
-    }
+  // Hydrate local state from the profile.
+  const hydrate = useCallback(() => {
+    if (!profile) return
+    setDisplayName(profile.display_name || '')
+    setAccent(profile.accent_color || 'rose')
+    setBio(profile.bio || '')
+    setTagline(profile.tagline || '')
+    setAvatarUrl(profile.avatar_url || null)
+    setGenres(profile.fav_genres || [])
+    setNowWatching(profile.now_watching || '')
+    setNowStartedAt(profile.now_watching_started_at || null)
+    setPicks(profile.picks || {})
   }, [profile])
 
-  // Auto-compute stats from this user's data.
+  useEffect(() => { hydrate() }, [hydrate])
+
+  // Library items for the pick pickers.
+  useEffect(() => {
+    async function loadItems() {
+      if (!activeCircle) { setItems([]); return }
+      const { data } = await supabase
+        .from('watchlist_items').select('*').eq('circle_id', activeCircle.id)
+      if (data) setItems(data)
+    }
+    loadItems()
+  }, [activeCircle])
+
+  // Auto stats.
   const loadStats = useCallback(async () => {
     if (!user) return
     const { data: reviews } = await supabase
-      .from('reviews')
-      .select('rating, reactions')
-      .eq('reviewer_id', user.id)
-
+      .from('reviews').select('rating, reactions').eq('reviewer_id', user.id)
     const { count: watchedCount } = await supabase
-      .from('watchlist_items')
-      .select('id', { count: 'exact', head: true })
-      .eq('added_by_id', user.id)
-      .eq('watched', true)
+      .from('watchlist_items').select('id', { count: 'exact', head: true })
+      .eq('added_by_id', user.id).eq('watched', true)
 
     let avg = 0
     let topReaction: string | null = null
     if (reviews && reviews.length > 0) {
       const rated = reviews.filter(r => (r.rating ?? 0) > 0)
-      if (rated.length > 0) {
-        avg = rated.reduce((s, r) => s + (r.rating || 0), 0) / rated.length
-      }
-      // Tally reaction frequency
+      if (rated.length > 0) avg = rated.reduce((s, r) => s + (r.rating || 0), 0) / rated.length
       const counts: Record<string, number> = {}
-      reviews.forEach(r => (r.reactions || []).forEach((lbl: string) => {
-        counts[lbl] = (counts[lbl] || 0) + 1
-      }))
+      reviews.forEach(r => (r.reactions || []).forEach((lbl: string) => { counts[lbl] = (counts[lbl] || 0) + 1 }))
       const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]
       if (top) topReaction = top[0]
     }
-
-    setStats({
-      watched: watchedCount || 0,
-      reviews: reviews?.length || 0,
-      avg: Math.round(avg * 10) / 10,
-      topReaction,
-    })
+    setStats({ watched: watchedCount || 0, reviews: reviews?.length || 0, avg: Math.round(avg * 10) / 10, topReaction })
   }, [user])
-
   useEffect(() => { loadStats() }, [loadStats])
 
-  // Is the now-watching stale (older than N quiet days)? If so, treat as cleared.
   const nowIsStale = (() => {
     if (!nowStartedAt) return false
     const days = (Date.now() - new Date(nowStartedAt).getTime()) / (1000 * 60 * 60 * 24)
@@ -122,13 +133,11 @@ function ProfileInner() {
     setUploadError(null)
     if (!file.type.startsWith('image/')) { setUploadError('Please choose an image file.'); return }
     if (file.size > 5 * 1024 * 1024) { setUploadError('Image must be under 5MB.'); return }
-
     setUploading(true)
     try {
       const ext = file.name.split('.').pop() || 'jpg'
       const path = `${user.id}/avatar_${Date.now()}.${ext}`
-      const { error: upErr } = await supabase.storage
-        .from('avatars').upload(path, file, { upsert: true, cacheControl: '3600' })
+      const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, { upsert: true, cacheControl: '3600' })
       if (upErr) throw upErr
       const { data } = supabase.storage.from('avatars').getPublicUrl(path)
       setAvatarUrl(data.publicUrl)
@@ -144,11 +153,27 @@ function ProfileInner() {
     setGenres(prev => prev.includes(name) ? prev.filter(g => g !== name) : [...prev, name])
   }
 
+  // Set a pick slot from a library item id (or clear it).
+  function setPick(slotKey: string, itemId: string) {
+    if (!itemId) {
+      setPicks(prev => { const next = { ...prev }; delete next[slotKey]; return next })
+      return
+    }
+    const item = items.find(i => i.id === itemId)
+    if (!item) return
+    const pick: ProfilePick = { title: item.title, year: item.year, poster: item.poster, type: item.type }
+    setPicks(prev => ({ ...prev, [slotKey]: pick }))
+  }
+
+  function cancelEdit() {
+    hydrate() // discard unsaved changes
+    setMode('view')
+  }
+
   async function save() {
     if (!user) return
     setSaving(true)
     const viewerType = deriveViewerType(genres, stats.avg)
-    // If now-watching text changed to something new and there's no start time, stamp it.
     const startedAt =
       nowWatching.trim() && nowWatching.trim() !== (profile?.now_watching || '').trim()
         ? new Date().toISOString()
@@ -165,14 +190,14 @@ function ProfileInner() {
         viewer_type: viewerType,
         now_watching: nowWatching.trim() || null,
         now_watching_started_at: nowWatching.trim() ? startedAt : null,
+        picks,
         updated_at: new Date().toISOString(),
       })
       .eq('id', user.id)
     await refreshProfile()
     setNowStartedAt(nowWatching.trim() ? startedAt : null)
     setSaving(false)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2500)
+    setMode('view')
   }
 
   const accents = [
@@ -190,10 +215,24 @@ function ProfileInner() {
   const initial = (displayName || user?.email || 'Y').charAt(0).toUpperCase()
   const viewerType = deriveViewerType(genres, stats.avg)
 
+  // Options for the pick pickers (poster thumbnails).
+  const pickerOptions: CuteOption[] = items.map(i => ({
+    value: i.id,
+    label: i.title,
+    sublabel: i.year || undefined,
+    leading: (
+      <div className="rounded-md overflow-hidden flex-shrink-0 bg-rose-50" style={{ width: 28, height: 40 }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        {i.poster ? <img src={i.poster} alt="" className="w-full h-full object-cover" /> : null}
+      </div>
+    ),
+  }))
+
+  const hasAnyPick = PICK_SLOTS.some(s => picks[s.key])
+
   return (
     <>
       <Navbar />
-      {/* Scoped keyframes for the lively now-watching card */}
       <style>{`
         @keyframes cp-pop { 0%,100%{transform:translateY(0) rotate(-3deg)} 50%{transform:translateY(-3px) rotate(3deg)} }
         @keyframes cp-pulse { 0%{box-shadow:0 0 0 0 rgba(74,222,128,0.6)} 70%{box-shadow:0 0 0 7px rgba(74,222,128,0)} 100%{box-shadow:0 0 0 0 rgba(74,222,128,0)} }
@@ -202,174 +241,268 @@ function ProfileInner() {
       `}</style>
 
       <main className="max-w-md mx-auto px-4 py-8">
-        <h1 className="font-display text-3xl font-bold text-gray-800 mb-6">
-          My <span className="gradient-text italic">Profile</span>
-        </h1>
-
-        {/* Header card */}
-        <div className="glass rounded-2xl p-6 mb-4 text-center">
-          <div className="relative inline-block">
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="font-display text-3xl font-bold text-gray-800">
+            My <span className="gradient-text italic">Profile</span>
+          </h1>
+          {mode === 'view' && (
             <button
-              type="button"
-              onClick={() => fileRef.current?.click()}
-              className="group relative block mx-auto"
-              title="Change photo"
+              onClick={() => setMode('edit')}
+              className="flex items-center gap-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-semibold px-3.5 py-2 rounded-full transition-all"
             >
+              <Pencil size={13} /> Edit profile
+            </button>
+          )}
+        </div>
+
+        {/* ===================== VIEW MODE ===================== */}
+        {mode === 'view' && (
+          <>
+            {/* Header */}
+            <div className="glass rounded-[22px] p-6 mb-4 text-center">
               {avatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={avatarUrl} alt={displayName || 'You'} className="w-20 h-20 rounded-full object-cover ring-2 ring-white shadow" />
+                <img src={avatarUrl} alt={displayName || 'You'} className="w-22 h-22 rounded-full object-cover mx-auto ring-2 ring-white shadow" style={{ width: 88, height: 88 }} />
               ) : (
-                <span className={clsx('w-20 h-20 rounded-full flex items-center justify-center text-3xl font-bold text-white', accentBg)}>
+                <span className={clsx('rounded-full flex items-center justify-center text-4xl font-bold text-white mx-auto font-display', accentBg)} style={{ width: 88, height: 88 }}>
                   {initial}
                 </span>
               )}
-              <span className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                {uploading ? <Loader2 size={20} className="text-white animate-spin" /> : <Camera size={20} className="text-white" />}
-              </span>
-            </button>
-            <input ref={fileRef} type="file" accept="image/*" onChange={handlePickFile} className="hidden" />
-          </div>
-
-          <div className="mt-3 font-display text-2xl font-bold text-gray-800">{displayName || 'Your name'}</div>
-
-          <input
-            value={tagline}
-            onChange={e => setTagline(e.target.value.slice(0, TAGLINE_MAX))}
-            placeholder="Add a tagline…"
-            className="w-full text-center bg-transparent border-none outline-none text-rose-400 italic text-sm mt-1 placeholder-rose-200"
-          />
-
-          {genres.length > 0 && (
-            <div className="mt-3 flex items-center justify-center gap-1.5 text-sm">
-              <span className="text-xs text-gray-400">your viewer type</span>
-              <Sparkles size={14} className="text-purple-400" />
-              <span className="font-display italic font-bold text-purple-500">{viewerType}</span>
-            </div>
-          )}
-
-          {uploadError && <p className="text-xs text-red-500 mt-2">{uploadError}</p>}
-        </div>
-
-        {/* Stats strip */}
-        <div className="glass rounded-2xl p-4 mb-4">
-          <div className="flex items-center">
-            <Stat icon="🍿" n={stats.watched} label="Watched" />
-            <Div />
-            <Stat icon="⭐" n={stats.reviews} label="Reviews" />
-            <Div />
-            <Stat icon="📊" n={stats.avg > 0 ? stats.avg : '—'} label="Avg rating" />
-            <Div />
-            <Stat
-              icon={stats.topReaction ? REACTION_EMOJI[stats.topReaction] || '🍿' : '✨'}
-              n={stats.topReaction || '—'}
-              label="Top react"
-              small
-            />
-          </div>
-        </div>
-
-        {/* Now watching */}
-        <div className="glass rounded-2xl p-5 mb-4">
-          <label className="block text-[10px] font-semibold text-gray-400 mb-2.5 uppercase tracking-wide">Now watching</label>
-          {showNowWatching ? (
-            <div className="rounded-2xl p-3.5 flex items-center gap-3.5" style={{ background: 'linear-gradient(100deg,#e0457b,#a855f7)' }}>
-              <div className="w-12 h-[68px] rounded-lg flex-shrink-0 flex items-center justify-center text-xl" style={{ background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.25)' }}>
-                <span className="cp-pop">🍿</span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <span className="cp-live" />
-                  <span className="text-[10px] font-bold uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.9)' }}>Watching now</span>
+              <div className="mt-3 font-display text-2xl font-bold text-gray-800">{displayName || 'Your name'}</div>
+              {tagline && <div className="text-sm text-rose-400 italic mt-1">&ldquo;{tagline}&rdquo;</div>}
+              {genres.length > 0 && (
+                <div className="mt-3 inline-flex items-center gap-1.5 bg-purple-50 px-3.5 py-1.5 rounded-full">
+                  <Sparkles size={13} className="text-purple-400" />
+                  <span className="text-[13px] font-display italic font-bold text-purple-500">{viewerType}</span>
                 </div>
-                <div className="text-[17px] font-bold text-white mt-0.5 truncate">{nowWatching}</div>
-                <div className="text-[11px]" style={{ color: 'rgba(255,255,255,0.75)' }}>{daysAgoLabel(nowStartedAt)}</div>
+              )}
+              {bio && <p className="text-[13px] text-gray-500 leading-relaxed mt-3.5">{bio}</p>}
+            </div>
+
+            {/* Stats */}
+            <div className="glass rounded-[22px] p-4 mb-4">
+              <div className="flex items-center">
+                <Stat icon="🍿" n={stats.watched} label="Watched" />
+                <Div />
+                <Stat icon="⭐" n={stats.reviews} label="Reviews" />
+                <Div />
+                <Stat icon="📊" n={stats.avg > 0 ? stats.avg : '—'} label="Avg" />
+                <Div />
+                <Stat icon={stats.topReaction ? REACTION_EMOJI[stats.topReaction] || '🍿' : '✨'} n={stats.topReaction || '—'} label="Top react" small />
               </div>
+            </div>
+
+            {/* Now watching (only if set) */}
+            {showNowWatching && (
+              <div className="glass rounded-[22px] p-4 mb-4">
+                <div className="text-[10px] font-semibold text-gray-400 mb-2.5 uppercase tracking-wide">Now watching</div>
+                <div className="rounded-2xl p-3.5 flex items-center gap-3.5" style={{ background: 'linear-gradient(100deg,#e0457b,#a855f7)' }}>
+                  <div className="w-12 h-[68px] rounded-lg flex-shrink-0 flex items-center justify-center text-xl" style={{ background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.25)' }}>
+                    <span className="cp-pop">🍿</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="cp-live" />
+                      <span className="text-[10px] font-bold uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.9)' }}>Watching now</span>
+                    </div>
+                    <div className="text-[17px] font-bold text-white mt-0.5 truncate">{nowWatching}</div>
+                    <div className="text-[11px]" style={{ color: 'rgba(255,255,255,0.75)' }}>{daysAgoLabel(nowStartedAt)}</div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Genres (only picked) */}
+            {genres.length > 0 && (
+              <div className="glass rounded-[22px] p-4 mb-4">
+                <div className="text-[10px] font-semibold text-gray-400 mb-3 uppercase tracking-wide">My genres</div>
+                <div className="flex flex-wrap gap-2">
+                  {genres.map(name => {
+                    const g = genreByName(name)
+                    return (
+                      <span key={name} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] font-semibold"
+                        style={g ? { background: g.bg, color: g.text } : undefined}>
+                        {g ? `${g.emoji} ` : ''}{name}
+                      </span>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* If I had to pick */}
+            {hasAnyPick && (
+              <div className="glass rounded-[22px] p-4 mb-4">
+                <div className="text-[10px] font-semibold text-gray-400 mb-3 uppercase tracking-wide">If I had to pick…</div>
+                <div className="flex flex-col gap-3.5">
+                  {PICK_SLOTS.filter(s => picks[s.key]).map(s => {
+                    const p = picks[s.key]
+                    return (
+                      <div key={s.key} className="flex gap-3 items-center">
+                        <div className="w-[46px] h-[66px] rounded-lg flex-shrink-0 flex items-center justify-center text-xl bg-rose-50 overflow-hidden">
+                          {p.poster ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={p.poster} alt={p.title} className="w-full h-full object-cover" />
+                          ) : <span>{s.emoji}</span>}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-[10px] uppercase tracking-wide text-rose-400 font-bold">{s.emoji} {s.label}</div>
+                          <div className="text-[15px] font-semibold text-gray-800 truncate">{p.title}</div>
+                          {p.year && <div className="text-[11px] text-gray-400">{p.year}{p.type === 'tv' ? ' · TV' : ''}</div>}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ===================== EDIT MODE ===================== */}
+        {mode === 'edit' && (
+          <>
+            {/* Header edit */}
+            <div className="glass rounded-[22px] p-6 mb-4 text-center">
+              <div className="relative inline-block">
+                <button type="button" onClick={() => fileRef.current?.click()} className="group relative block mx-auto" title="Change photo">
+                  {avatarUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={avatarUrl} alt={displayName || 'You'} className="rounded-full object-cover ring-2 ring-white shadow" style={{ width: 88, height: 88 }} />
+                  ) : (
+                    <span className={clsx('rounded-full flex items-center justify-center text-4xl font-bold text-white font-display', accentBg)} style={{ width: 88, height: 88 }}>
+                      {initial}
+                    </span>
+                  )}
+                  <span className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                    {uploading ? <Loader2 size={20} className="text-white animate-spin" /> : <Camera size={20} className="text-white" />}
+                  </span>
+                </button>
+                <input ref={fileRef} type="file" accept="image/*" onChange={handlePickFile} className="hidden" />
+              </div>
+              <p className="text-[11px] text-gray-300 mt-2">Tap photo to change</p>
+              {uploadError && <p className="text-xs text-red-500 mt-1">{uploadError}</p>}
+
+              <input
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="Display name"
+                className="w-full text-center bg-white/80 border border-rose-100 rounded-xl px-3 py-2.5 text-sm mt-3 outline-none focus:border-rose-300"
+              />
+              <input
+                value={tagline}
+                onChange={e => setTagline(e.target.value.slice(0, TAGLINE_MAX))}
+                placeholder="Add a tagline…"
+                className="w-full text-center bg-white/80 border border-rose-100 rounded-xl px-3 py-2 text-sm mt-2 outline-none focus:border-rose-300 italic text-rose-500"
+              />
+            </div>
+
+            {/* Accent */}
+            <div className="glass rounded-[22px] p-5 mb-4">
+              <label className="block text-[10px] font-semibold text-gray-400 mb-2 uppercase tracking-wide">Accent color</label>
+              <div className="flex gap-2">
+                {accents.map((a) => (
+                  <button key={a.value} onClick={() => setAccent(a.value)}
+                    className={clsx('w-9 h-9 rounded-full transition-all', a.cls, accent === a.value ? 'ring-2 ring-offset-2 ring-gray-400 scale-110' : 'opacity-60')}
+                    title={a.label} />
+                ))}
+              </div>
+            </div>
+
+            {/* Now watching input */}
+            <div className="glass rounded-[22px] p-5 mb-4">
+              <label className="block text-[10px] font-semibold text-gray-400 mb-2.5 uppercase tracking-wide">Now watching</label>
+              <div className="relative">
+                <input
+                  value={nowWatching}
+                  onChange={e => setNowWatching(e.target.value)}
+                  placeholder="What's on right now? 🍿"
+                  className="w-full bg-white/80 border border-rose-100 rounded-xl px-3 py-2.5 text-sm text-gray-700 placeholder-gray-300 outline-none focus:border-rose-300"
+                />
+                {nowWatching && (
+                  <button onClick={() => { setNowWatching(''); setNowStartedAt(null) }}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500" aria-label="Clear">
+                    <X size={15} />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Genres grid */}
+            <div className="glass rounded-[22px] p-5 mb-4">
+              <label className="block text-[10px] font-semibold text-gray-400 mb-3 uppercase tracking-wide">My genres — tap to pick</label>
+              <div className="flex flex-wrap gap-2">
+                {GENRES.map(g => {
+                  const on = genres.includes(g.name)
+                  return (
+                    <button key={g.name} onClick={() => toggleGenre(g.name)}
+                      className={clsx('inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] font-semibold border transition-all',
+                        !on && 'bg-white/80 text-gray-400 border-rose-100 hover:border-rose-300')}
+                      style={on ? { background: g.bg, color: g.text, borderColor: g.bg } : undefined}>
+                      <span>{g.emoji}</span> {g.name}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* If I had to pick — editable */}
+            <div className="glass rounded-[22px] p-5 mb-4">
+              <label className="block text-[10px] font-semibold text-gray-400 mb-3 uppercase tracking-wide">If I had to pick…</label>
+              {items.length === 0 && (
+                <p className="text-xs text-gray-300 mb-2">Add titles to your Library first, then you can pick them here.</p>
+              )}
+              <div className="flex flex-col gap-3">
+                {PICK_SLOTS.map(s => (
+                  <div key={s.key}>
+                    <div className="text-[11px] text-rose-500 font-semibold mb-1">{s.emoji} {s.label}</div>
+                    <CuteSelect
+                      variant="full"
+                      searchable
+                      value={items.find(i => picks[s.key] && i.title === picks[s.key].title)?.id || ''}
+                      onChange={(id) => setPick(s.key, id)}
+                      placeholder="Pick a title…"
+                      options={pickerOptions}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Bio */}
+            <div className="glass rounded-[22px] p-5 mb-4">
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Bio</label>
+                <span className={clsx('text-[11px]', bio.length > BIO_MAX - 20 ? 'text-rose-400' : 'text-gray-300')}>{bio.length}/{BIO_MAX}</span>
+              </div>
+              <textarea
+                value={bio}
+                onChange={(e) => setBio(e.target.value.slice(0, BIO_MAX))}
+                rows={3}
+                placeholder="A little about your movie taste..."
+                className="w-full bg-white/80 border border-rose-100 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-rose-300 resize-none"
+              />
+            </div>
+
+            {/* Save / cancel */}
+            <div className="flex gap-2">
               <button
-                onClick={() => { setNowWatching(''); setNowStartedAt(null) }}
-                className="text-white/70 hover:text-white flex-shrink-0"
-                aria-label="Clear now watching"
+                onClick={save}
+                disabled={saving || uploading}
+                className="flex-1 flex items-center justify-center gap-2 bg-rose-500 hover:bg-rose-600 disabled:bg-rose-300 text-white font-medium py-3 rounded-xl text-sm transition-all"
               >
-                <X size={16} />
+                {saving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />} Save profile
+              </button>
+              <button
+                onClick={cancelEdit}
+                disabled={saving}
+                className="px-5 py-3 rounded-xl text-sm text-gray-500 hover:bg-gray-100 transition-all"
+              >
+                Cancel
               </button>
             </div>
-          ) : (
-            <input
-              value={nowWatching}
-              onChange={e => setNowWatching(e.target.value)}
-              placeholder="What's on right now? 🍿"
-              className="w-full bg-white/80 border border-rose-100 rounded-xl px-3 py-2.5 text-sm text-gray-700 placeholder-gray-300 outline-none focus:border-rose-300"
-            />
-          )}
-        </div>
-
-        {/* Genres */}
-        <div className="glass rounded-2xl p-5 mb-4">
-          <label className="block text-[10px] font-semibold text-gray-400 mb-3 uppercase tracking-wide">My genres — tap to pick</label>
-          <div className="flex flex-wrap gap-2">
-            {GENRES.map(g => {
-              const on = genres.includes(g.name)
-              return (
-                <button
-                  key={g.name}
-                  onClick={() => toggleGenre(g.name)}
-                  className={clsx(
-                    'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] font-semibold border transition-all',
-                    !on && 'bg-white/80 text-gray-400 border-rose-100 hover:border-rose-300',
-                  )}
-                  style={on ? { background: g.bg, color: g.text, borderColor: g.bg } : undefined}
-                >
-                  <span>{g.emoji}</span> {g.name}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-
-        {/* Settings: name, accent, bio */}
-        <div className="glass rounded-2xl p-5 mb-4">
-          <label className="block text-[10px] font-semibold text-gray-400 mb-1 uppercase tracking-wide">Display name</label>
-          <input
-            value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
-            className="w-full bg-white/80 border border-rose-100 rounded-xl px-3 py-2.5 text-sm mb-4 outline-none focus:border-rose-300"
-          />
-
-          <label className="block text-[10px] font-semibold text-gray-400 mb-2 uppercase tracking-wide">Accent color</label>
-          <div className="flex gap-2 mb-4">
-            {accents.map((a) => (
-              <button
-                key={a.value}
-                onClick={() => setAccent(a.value)}
-                className={clsx('w-9 h-9 rounded-full transition-all', a.cls, accent === a.value ? 'ring-2 ring-offset-2 ring-gray-400 scale-110' : 'opacity-60')}
-                title={a.label}
-              />
-            ))}
-          </div>
-
-          <div className="flex items-center justify-between mb-1">
-            <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Bio</label>
-            <span className={clsx('text-[11px]', bio.length > BIO_MAX - 20 ? 'text-rose-400' : 'text-gray-300')}>{bio.length}/{BIO_MAX}</span>
-          </div>
-          <textarea
-            value={bio}
-            onChange={(e) => setBio(e.target.value.slice(0, BIO_MAX))}
-            rows={3}
-            placeholder="A little about your movie taste..."
-            className="w-full bg-white/80 border border-rose-100 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-rose-300 resize-none"
-          />
-        </div>
-
-        <button
-          onClick={save}
-          disabled={saving || uploading}
-          className="w-full flex items-center justify-center gap-2 bg-rose-500 hover:bg-rose-600 disabled:bg-rose-300 text-white font-medium py-3 rounded-xl text-sm transition-all"
-        >
-          {saving ? <Loader2 size={16} className="animate-spin" /> : saved ? <><Check size={16} /> Saved!</> : 'Save profile'}
-        </button>
-
-        <p className="text-xs text-gray-300 text-center mt-3">
-          Your photo, tagline, genres, and now-watching are visible to people in your circles.
-        </p>
+          </>
+        )}
       </main>
     </>
   )
