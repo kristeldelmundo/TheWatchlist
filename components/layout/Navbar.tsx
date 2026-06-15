@@ -62,8 +62,7 @@ export default function Navbar() {
           <div className="relative" ref={circleRef}>
             <button
               onClick={() => setCircleMenuOpen((o) => !o)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-rose-50 hover:bg-rose-100 text-sm font-medium text-rose-600 transition-colors max-w-[140px]"
-            >
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-rose-50 hover:bg-rose-100 text-sm font-medium text-rose-600 transition-colors max-w-[200px]"
               <span>{activeCircle.emoji}</span>
               <span className="truncate">{activeCircle.name}</span>
               <ChevronDown size={12} className="flex-shrink-0" />
