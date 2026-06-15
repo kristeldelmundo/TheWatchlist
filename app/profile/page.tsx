@@ -6,9 +6,9 @@ import RequireAuth from '@/components/auth/RequireAuth'
 import { useAuth } from '@/components/auth/AuthProvider'
 import type { CustomPickItem } from '@/components/auth/AuthProvider'
 import { supabase } from '@/lib/supabase'
-import { Loader2, Check, Camera, Pencil, Image as ImageIcon, Plus, X, Share2 } from 'lucide-react'
+import { Loader2, Check, Camera, Pencil, Image as ImageIcon, Plus, X, Share2, AtSign } from 'lucide-react'
 import { clsx } from 'clsx'
-import { GENRES, genreByName, deriveViewerType } from '@/lib/profile'
+import { GENRES, genreByName, deriveViewerType, normalizeUsername, isValidUsername, isUsernameAvailable } from '@/lib/profile'
 import {
   ACCENTS, accentByValue, BG_PRESETS, resolveBgStyle, isDarkBg,
   FONTS, fontByValue, FONT_SCALES, fontScaleValue, TEXT_COLORS,
@@ -34,6 +34,8 @@ interface Stats {
   topReaction: string | null
 }
 
+type UsernameStatus = 'idle' | 'checking' | 'available' | 'taken' | 'invalid'
+
 function ProfileInner() {
   const { user, profile, refreshProfile } = useAuth()
 
@@ -48,6 +50,11 @@ function ProfileInner() {
   const [nowWatching, setNowWatching] = useState('')
   const [nowWatchingPoster, setNowWatchingPoster] = useState<string | null>(null)
   const [nowStartedAt, setNowStartedAt] = useState<string | null>(null)
+
+  // Username (for pretty share links: cinepop.live/@username).
+  const [username, setUsername] = useState('')
+  const [usernameStatus, setUsernameStatus] = useState<UsernameStatus>('idle')
+  const usernameCheckTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Editable custom picks (replaces the fixed comfort/cry/guilty/hill slots).
   const [customPicks, setCustomPicks] = useState<CustomPickItem[]>([])
@@ -93,6 +100,8 @@ function ProfileInner() {
     setFontScale(profile.font_scale || 'base')
     setTextColor(profile.text_color || 'default')
     setNowWatchingPoster(null)
+    setUsername(profile.username || '')
+    setUsernameStatus('idle')
     // Prefer custom_picks; otherwise convert legacy picks once so nothing is lost.
     if (profile.custom_picks && profile.custom_picks.length > 0) {
       setCustomPicks(profile.custom_picks)
@@ -194,6 +203,33 @@ function ProfileInner() {
     setGenres(prev => prev.includes(name) ? prev.filter(g => g !== name) : [...prev, name])
   }
 
+  // ---- username editing ----
+  function handleUsernameChange(raw: string) {
+    const clean = normalizeUsername(raw)
+    setUsername(clean)
+
+    if (usernameCheckTimer.current) clearTimeout(usernameCheckTimer.current)
+
+    // Unchanged from saved value (including empty) — nothing to check.
+    if (clean === (profile?.username || '')) {
+      setUsernameStatus('idle')
+      return
+    }
+    if (!clean) {
+      setUsernameStatus('idle')
+      return
+    }
+    if (!isValidUsername(clean)) {
+      setUsernameStatus('invalid')
+      return
+    }
+    setUsernameStatus('checking')
+    usernameCheckTimer.current = setTimeout(async () => {
+      const ok = await isUsernameAvailable(clean, user?.id)
+      setUsernameStatus(ok ? 'available' : 'taken')
+    }, 450)
+  }
+
   // ---- custom pick editing ----
   function updatePickField(idx: number, field: keyof CustomPickItem, value: string) {
     setCustomPicks(prev => prev.map((p, i) => i === idx ? { ...p, [field]: value } : p))
@@ -232,6 +268,21 @@ function ProfileInner() {
 
   async function save() {
     if (!user) return
+
+    // Block save on a username that's invalid or known to be taken.
+    if (username && (usernameStatus === 'invalid' || usernameStatus === 'taken')) {
+      setSaveError(
+        usernameStatus === 'invalid'
+          ? 'Username must be 3-20 characters: lowercase letters, numbers, underscores, starting with a letter.'
+          : 'That username is already taken — try another.',
+      )
+      return
+    }
+    if (username && usernameStatus === 'checking') {
+      setSaveError('Still checking that username — try again in a sec.')
+      return
+    }
+
     setSaving(true)
     setSaveError(null)
     const viewerType = deriveViewerType(genres, stats.avg)
@@ -245,6 +296,7 @@ function ProfileInner() {
       .from('profiles')
       .update({
         display_name: displayName,
+        username: username || null,
         accent_color: accent,
         bio: bio.slice(0, BIO_MAX),
         tagline: tagline.slice(0, TAGLINE_MAX),
@@ -264,7 +316,11 @@ function ProfileInner() {
       .eq('id', user.id)
 
     if (error) {
-      setSaveError(error.message || 'Could not save. Please try again.')
+      // Unique constraint race: someone else grabbed the username between our check and save.
+      const msg = (error.message || '').toLowerCase().includes('username')
+        ? 'That username was just taken — try another.'
+        : (error.message || 'Could not save. Please try again.')
+      setSaveError(msg)
       setSaving(false)
       return
     }
@@ -311,9 +367,11 @@ function ProfileInner() {
   const nameColor = customTextColor || undefined
   const bodyColor = customTextColor || undefined
 
-  // Public share URL for this profile — pretty /@<id> form (rewritten to /u/[id]).
+  // Public share URL for this profile — pretty /@<username> if set, else /@<uuid>.
+  // Both forms resolve via the /@:id rewrite to /u/[id].
+  const shareHandle = (profile?.username || '').trim() || user?.id || ''
   const shareUrl = user
-    ? (typeof window !== 'undefined' ? `${window.location.origin}/@${user.id}` : `https://cinepop.live/@${user.id}`)
+    ? (typeof window !== 'undefined' ? `${window.location.origin}/@${shareHandle}` : `https://cinepop.live/@${shareHandle}`)
     : ''
 
   return (
@@ -365,6 +423,9 @@ function ProfileInner() {
               )}
               <div className="min-w-0 flex-1">
                 <div className="font-display text-3xl font-bold leading-tight" style={{ color: nameColor || '#1f2937' }}>{displayName || 'Your name'}</div>
+                {profile?.username && (
+                  <div className="text-[13px] font-medium mt-0.5" style={{ color: customTextColor || '#9ca3af' }}>@{profile.username}</div>
+                )}
                 {genres.length > 0 && (
                   <div className="text-base font-display italic font-bold leading-tight mt-1" style={{ color: customTextColor || '#a855f7' }}>✨ {viewerType}</div>
                 )}
@@ -466,6 +527,46 @@ function ProfileInner() {
                 placeholder="Display name"
                 className="w-full text-center bg-white/80 border border-rose-100 rounded-xl px-3 py-2 text-sm mt-2.5 outline-none focus:border-rose-300"
               />
+
+              {/* Username — used for the pretty /@username share link */}
+              <div className="mt-2">
+                <div className="relative">
+                  <AtSign size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" />
+                  <input
+                    value={username}
+                    onChange={(e) => handleUsernameChange(e.target.value)}
+                    placeholder="username"
+                    maxLength={20}
+                    className={clsx(
+                      'w-full text-center bg-white/80 border rounded-xl pl-8 pr-8 py-2 text-sm outline-none transition-colors',
+                      usernameStatus === 'taken' || usernameStatus === 'invalid'
+                        ? 'border-red-300 focus:border-red-400'
+                        : usernameStatus === 'available'
+                          ? 'border-green-300 focus:border-green-400'
+                          : 'border-rose-100 focus:border-rose-300',
+                    )}
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2">
+                    {usernameStatus === 'checking' && <Loader2 size={14} className="text-gray-300 animate-spin" />}
+                    {usernameStatus === 'available' && <Check size={14} className="text-green-500" />}
+                  </span>
+                </div>
+                <p className={clsx(
+                  'text-[11px] mt-1 text-center',
+                  usernameStatus === 'taken' || usernameStatus === 'invalid' ? 'text-red-500' : 'text-gray-400',
+                )}>
+                  {usernameStatus === 'invalid' && 'Use 3-20 lowercase letters, numbers, or underscores — start with a letter.'}
+                  {usernameStatus === 'taken' && 'That username is already taken.'}
+                  {usernameStatus === 'available' && `cinepop.live/@${username} is available!`}
+                  {usernameStatus === 'idle' && (
+                    username
+                      ? `Your share link: cinepop.live/@${username}`
+                      : `Optional — set a username for a pretty share link (cinepop.live/@you). Leave blank to use cinepop.live/@${user?.id ?? '<id>'}.`
+                  )}
+                  {usernameStatus === 'checking' && 'Checking availability…'}
+                </p>
+              </div>
+
               <input
                 value={tagline}
                 onChange={e => setTagline(e.target.value.slice(0, TAGLINE_MAX))}
