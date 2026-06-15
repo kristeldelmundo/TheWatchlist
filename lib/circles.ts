@@ -37,6 +37,24 @@ export async function updateCircle(
   return !error
 }
 
+// Pull a bare invite code out of whatever the user pasted — a full invite
+// link, a code with stray slashes, or the bare code. We take the last
+// non-empty path-ish segment and strip anything that isn't part of a code.
+export function extractInviteCode(input: string): string {
+  let s = (input || '').trim()
+  if (!s) return ''
+  // Drop any query string or hash.
+  s = s.split(/[?#]/)[0]
+  // If it looks like a URL or has slashes, take the last non-empty segment.
+  if (s.includes('/')) {
+    const parts = s.split('/').filter(Boolean)
+    s = parts[parts.length - 1] || ''
+  }
+  // Codes are alphanumeric; strip anything else (spaces, punctuation).
+  s = s.replace(/[^a-zA-Z0-9]/g, '')
+  return s.toLowerCase()
+}
+
 // Join a circle by its invite code.
 // Uses a secure DB function so new joiners can find the circle even though
 // RLS only lets members SELECT circles directly.
@@ -44,8 +62,8 @@ export async function joinCircleByCode(
   code: string,
   _userId: string,
 ): Promise<{ circleId?: string; error?: string }> {
-  const clean = code.trim().toLowerCase()
-  if (!clean) return { error: 'Please enter an invite code.' }
+  const clean = extractInviteCode(code)
+  if (!clean) return { error: 'Please enter an invite code or link.' }
 
   const { data, error } = await supabase.rpc('join_circle_by_code', {
     code: clean,
