@@ -1,33 +1,30 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useRouter, usePathname } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { useAuth } from './AuthProvider'
+import { useOnboarding } from './OnboardingProvider'
 import { Loader2 } from 'lucide-react'
 
-// Paths that should never redirect into onboarding (onboarding itself, plus
-// the invite-join flow which should complete uninterrupted).
-const ONBOARDING_EXEMPT_PREFIXES = ['/onboarding', '/join']
-
-// Wrap any page that requires login. Redirects to /login if not authenticated,
-// and to /onboarding if the user hasn't completed onboarding yet.
+// Wrap any page that requires login. Redirects to /login if not authenticated.
+// Once authenticated, if the user hasn't completed onboarding yet, opens the
+// onboarding modal on top of the page instead of redirecting.
 export default function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, profile, loading } = useAuth()
   const router = useRouter()
-  const pathname = usePathname()
-
-  const exempt = ONBOARDING_EXEMPT_PREFIXES.some(p => pathname?.startsWith(p))
+  const { open: onboardingOpen, openOnboarding } = useOnboarding()
 
   useEffect(() => {
-    if (loading) return
-    if (!user) {
+    if (!loading && !user) {
       router.replace('/login')
-      return
     }
-    if (!exempt && profile && profile.onboarding_completed === false) {
-      router.replace('/onboarding')
+  }, [loading, user, router])
+
+  useEffect(() => {
+    if (!loading && user && profile && profile.onboarding_completed === false && !onboardingOpen) {
+      openOnboarding()
     }
-  }, [loading, user, profile, exempt, router])
+  }, [loading, user, profile, onboardingOpen, openOnboarding])
 
   if (loading) {
     return (
@@ -40,11 +37,6 @@ export default function RequireAuth({ children }: { children: React.ReactNode })
 
   if (!user) {
     // Redirecting — render nothing to avoid a flash of protected content
-    return null
-  }
-
-  if (!exempt && profile && profile.onboarding_completed === false) {
-    // Redirecting to onboarding — render nothing to avoid a flash of protected content
     return null
   }
 
