@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import Image from 'next/image'
 import Navbar from '@/components/layout/Navbar'
 import { WatchlistItem, Review } from '@/types'
@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabase'
 import { Star, Copy, Share2, Check, Film, Tv, Heart } from 'lucide-react'
 import { clsx } from 'clsx'
 import RequireAuth from '@/components/auth/RequireAuth'
+import { useCircle } from '@/components/auth/CircleProvider'
 
 const REACTIONS = [
   { emoji: '😍', label: 'Obsessed' },
@@ -44,6 +45,7 @@ function StarRating({ value, onChange }: { value: number; onChange: (v: number) 
 }
 
 function ReviewInner() {
+  const { activeCircle } = useCircle()
   const shareRef = useRef<HTMLDivElement>(null)
   const [items, setItems] = useState<WatchlistItem[]>([])
   const [pastReviews, setPastReviews] = useState<Review[]>([])
@@ -57,10 +59,29 @@ function ReviewInner() {
   const [saved, setSaved] = useState(false)
   const [copied, setCopied] = useState(false)
 
+  const loadData = useCallback(async () => {
+    if (!activeCircle) {
+      setItems([])
+      setPastReviews([])
+      return
+    }
+    const { data: itemData } = await supabase
+      .from('watchlist_items')
+      .select('*')
+      .eq('circle_id', activeCircle.id)
+    if (itemData) setItems(itemData)
+
+    const { data: reviewData } = await supabase
+      .from('reviews')
+      .select('*')
+      .eq('circle_id', activeCircle.id)
+      .order('created_at', { ascending: false })
+    if (reviewData) setPastReviews(reviewData)
+  }, [activeCircle])
+
   useEffect(() => {
-    supabase.from('watchlist_items').select('*').then(({ data }) => { if (data) setItems(data) })
-    supabase.from('reviews').select('*').order('created_at', { ascending: false }).then(({ data }) => { if (data) setPastReviews(data) })
-  }, [])
+    loadData()
+  }, [loadData])
 
   const selected = items.find(i => i.id === selectedId)
   const avgRating = ratingK && ratingJ ? ((ratingK + ratingJ) / 2).toFixed(1) : ratingK || ratingJ || 0
@@ -70,10 +91,11 @@ function ReviewInner() {
   }
 
   async function saveReview() {
-    if (!selectedId) return
+    if (!selectedId || !activeCircle) return
     setSaving(true)
     const review = {
       watchlist_item_id: selectedId,
+      circle_id: activeCircle.id,
       title: selected?.title || '',
       poster: selected?.poster || null,
       rating_k: ratingK,
@@ -134,7 +156,11 @@ function ReviewInner() {
           <h1 className="font-display text-3xl font-bold text-gray-800 mb-1">
             <span className="gradient-text italic">Rate & Share</span>
           </h1>
-          <p className="text-sm text-gray-400">Review what you watched together</p>
+          <p className="text-sm text-gray-400">
+            {activeCircle && (
+              <span className="text-rose-400 font-medium">{activeCircle.emoji} {activeCircle.name}</span>
+            )}{' '}· Review what you watched together
+          </p>
         </div>
 
         {/* Movie picker */}
