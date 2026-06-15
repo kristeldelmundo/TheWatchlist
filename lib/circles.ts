@@ -25,46 +25,38 @@ export async function createCircle(
   return data.id as string
 }
 
-// Join a circle by its invite code. Returns the circle id if joined, or an error string.
+// Join a circle by its invite code.
+// Uses a secure DB function so new joiners can find the circle even though
+// RLS only lets members SELECT circles directly.
 export async function joinCircleByCode(
   code: string,
-  userId: string,
+  _userId: string,
 ): Promise<{ circleId?: string; error?: string }> {
   const clean = code.trim().toLowerCase()
   if (!clean) return { error: 'Please enter an invite code.' }
 
-  // Find the circle with this invite code
-  const { data: circle, error } = await supabase
-    .from('circles')
-    .select('id, name')
-    .eq('invite_code', clean)
-    .maybeSingle()
-
-  if (error || !circle) {
-    return { error: "That invite code didn't match any circle." }
-  }
-
-  // Already a member?
-  const { data: existing } = await supabase
-    .from('circle_members')
-    .select('id')
-    .eq('circle_id', circle.id)
-    .eq('user_id', userId)
-    .maybeSingle()
-
-  if (existing) {
-    return { circleId: circle.id, error: "You're already in this circle!" }
-  }
-
-  // Join
-  const { error: joinError } = await supabase.from('circle_members').insert({
-    circle_id: circle.id,
-    user_id: userId,
-    role: 'member',
+  const { data, error } = await supabase.rpc('join_circle_by_code', {
+    code: clean,
   })
 
-  if (joinError) return { error: 'Could not join the circle. Try again.' }
-  return { circleId: circle.id }
+  if (error || !data || data.length === 0) {
+    return { error: 'Could not join the circle. Try again.' }
+  }
+
+  const row = data[0] as { circle_id: string | null; circle_name: string | null; status: string }
+
+  switch (row.status) {
+    case 'joined':
+      return { circleId: row.circle_id! }
+    case 'already_member':
+      return { circleId: row.circle_id!, error: "You're already in this circle!" }
+    case 'not_found':
+      return { error: "That invite code didn't match any circle." }
+    case 'not_logged_in':
+      return { error: 'Please log in first.' }
+    default:
+      return { error: 'Could not join the circle. Try again.' }
+  }
 }
 
 // Get the members of a circle, with their profile info
