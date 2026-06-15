@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Image from "next/image";
 import Navbar from "@/components/layout/Navbar";
 import { supabase } from "@/lib/supabase";
@@ -30,8 +30,13 @@ function TrendingInner() {
   const [removedIds, setRemovedIds] = useState<Set<number>>(new Set());
   // briefly show a tick on the item just added before it slides away
   const [justAdded, setJustAdded] = useState<number | null>(null);
+  // titles already in this circle's watchlist (normalized "title|type")
+  const [existingKeys, setExistingKeys] = useState<Set<string>>(new Set());
 
   const myName = profile?.display_name || user?.email?.split("@")[0] || "Me";
+
+  const keyFor = (title: string, type: string) =>
+    `${title.trim().toLowerCase()}|${type}`;
 
   useEffect(() => {
     Promise.all([fetchTrendingMovies(), fetchTrendingTV()]).then(([m, t]) => {
@@ -41,8 +46,33 @@ function TrendingInner() {
     });
   }, []);
 
+  // Load what's already in this circle so we can flag duplicates
+  const loadExisting = useCallback(async () => {
+    if (!activeCircle) {
+      setExistingKeys(new Set());
+      return;
+    }
+    const { data } = await supabase
+      .from("watchlist_items")
+      .select("title, type")
+      .eq("circle_id", activeCircle.id);
+    if (data) {
+      setExistingKeys(new Set(data.map((d) => keyFor(d.title, d.type))));
+    }
+  }, [activeCircle]);
+
+  useEffect(() => {
+    loadExisting();
+  }, [loadExisting]);
+
   async function addToWatchlist(item: TrendingItem) {
     if (!activeCircle || !user) return;
+
+    // Already in the list? Don't add a duplicate.
+    if (existingKeys.has(keyFor(item.title, item.type))) {
+      return;
+    }
+
     // Show the tick immediately
     setJustAdded(item.id);
 
@@ -59,8 +89,19 @@ function TrendingInner() {
       rating: item.rating,
       watched: false,
     };
-    // Fire the insert (don't block the UI on it)
-    supabase.from("watchlist_items").insert(newItem).then(() => {});
+
+    const { error } = await supabase.from("watchlist_items").insert(newItem);
+
+    // Mark it as existing now (covers the rare race where the DB rejects a dup)
+    setExistingKeys((prev) =>
+      new Set(prev).add(keyFor(item.title, item.type)),
+    );
+
+    if (error) {
+      // Most likely a duplicate caught by the database — just flag it as added/known.
+      setJustAdded(null);
+      return;
+    }
 
     // After a short beat, remove it so the next trending title slides up
     setTimeout(() => {
@@ -161,6 +202,7 @@ function TrendingInner() {
           <div className="space-y-3">
             {list.map((item, idx) => {
               const added = justAdded === item.id;
+              const alreadyInList = existingKeys.has(keyFor(item.title, item.type));
               return (
                 <div
                   key={item.id}
@@ -222,6 +264,10 @@ function TrendingInner() {
                     {added ? (
                       <div className="flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-medium bg-rose-100 text-rose-600">
                         <Check size={14} /> Added!
+                      </div>
+                    ) : alreadyInList ? (
+                      <div className="flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-medium bg-gray-100 text-gray-400">
+                        <Check size={14} /> In list
                       </div>
                     ) : (
                       <button
