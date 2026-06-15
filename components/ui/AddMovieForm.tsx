@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import { Plus, Loader2, Search, Film, Tv, AlertCircle, Check } from 'lucide-react'
-import { WatchlistUser, MediaType, OMDBSearchResult } from '@/types'
+import { MediaType, OMDBSearchResult } from '@/types'
 import { searchMovies } from '@/lib/omdb'
 import { clsx } from 'clsx'
 
@@ -13,22 +13,17 @@ interface Props {
   onAdd: (
     title: string,
     type: MediaType,
-    who: WatchlistUser,
     imdbID?: string,
   ) => Promise<AddResult | void>
+  // Name of the person currently adding (the logged-in user)
+  addingAs?: string
 }
-
-const USERS: { value: WatchlistUser; initial: string; label: string }[] = [
-  { value: 'Kristel', initial: 'K', label: 'Kristel' },
-  { value: 'Eric', initial: 'E', label: 'Eric' },
-]
 
 type Feedback = { kind: 'added' | 'duplicate'; title: string } | null
 
-export default function AddMovieForm({ onAdd }: Props) {
+export default function AddMovieForm({ onAdd, addingAs }: Props) {
   const [title, setTitle] = useState('')
   const [type, setType] = useState<MediaType>('movie')
-  const [who, setWho] = useState<WatchlistUser>('Kristel')
   const [loading, setLoading] = useState(false)
   const [feedback, setFeedback] = useState<Feedback>(null)
 
@@ -70,7 +65,6 @@ export default function AddMovieForm({ onAdd }: Props) {
     } else if (result && result.ok) {
       setFeedback({ kind: 'added', title: result.title || '' })
     }
-    // Auto-hide after a few seconds
     setTimeout(() => setFeedback(null), 4000)
   }
 
@@ -79,7 +73,7 @@ export default function AddMovieForm({ onAdd }: Props) {
     setTitle('')
     setSuggestions([])
     setLoading(true)
-    const result = await onAdd(s.Title, type, who, s.imdbID)
+    const result = await onAdd(s.Title, type, s.imdbID)
     setLoading(false)
     showFeedback(result)
   }
@@ -89,7 +83,7 @@ export default function AddMovieForm({ onAdd }: Props) {
     if (!title.trim() || loading) return
     setShowDropdown(false)
     setLoading(true)
-    const result = await onAdd(title.trim(), type, who)
+    const result = await onAdd(title.trim(), type)
     setLoading(false)
     showFeedback(result)
     if (result && result.ok) setTitle('')
@@ -103,32 +97,17 @@ export default function AddMovieForm({ onAdd }: Props) {
         showDropdown && suggestions.length > 0 ? 'z-50' : 'z-10',
       )}
     >
-      <div className="flex items-center gap-2 mb-3">
-        <span className="text-sm font-medium text-gray-600">Adding as:</span>
-        {USERS.map(u => (
-          <button
-            key={u.value}
-            type="button"
-            onClick={() => setWho(u.value)}
-            className={clsx(
-              'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold transition-all',
-              who === u.value
-                ? u.value === 'Kristel'
-                  ? 'bg-rose-500 text-white scale-105 shadow-md shadow-rose-200'
-                  : 'bg-purple-500 text-white scale-105 shadow-md shadow-purple-200'
-                : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
-            )}
-          >
-            <span className={clsx(
-              'w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold',
-              who === u.value ? 'bg-white/30' : 'bg-gray-200'
-            )}>
-              {u.initial}
+      {addingAs && (
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-sm font-medium text-gray-600">Adding as</span>
+          <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold bg-rose-500 text-white">
+            <span className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold bg-white/30">
+              {addingAs.charAt(0).toUpperCase()}
             </span>
-            {u.label}
-          </button>
-        ))}
-      </div>
+            {addingAs}
+          </span>
+        </div>
+      )}
 
       <div className="flex gap-2 mb-2">
         <div ref={wrapperRef} className="relative flex-1">
@@ -208,7 +187,7 @@ export default function AddMovieForm({ onAdd }: Props) {
             <>
               <AlertCircle size={15} className="flex-shrink-0" />
               <span>
-                <strong>{feedback.title}</strong> is already on your watchlist! 🍿
+                <strong>{feedback.title}</strong> is already on this watchlist! 🍿
               </span>
             </>
           ) : (
