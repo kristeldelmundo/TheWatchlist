@@ -76,7 +76,7 @@ export default function HomePage() {
             href="/watchlist"
             className="flex items-center justify-center gap-2 bg-rose-500 hover:bg-rose-600 text-white font-medium px-8 py-3.5 rounded-full transition-all hover:scale-105 shadow-lg shadow-rose-200"
           >
-            <Film size={18} /> Browse Watchlist
+            <Film size={18} /> Browse Library
           </Link>
           <Link
             href="/randomizer"
@@ -89,7 +89,7 @@ export default function HomePage() {
         {/* Feature cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full max-w-2xl">
           {[
-            { icon: <Film size={22} />, color: 'rose', title: 'Shared Watchlist', desc: 'Everyone adds movies & shows, sorted by category' },
+            { icon: <Film size={22} />, color: 'rose', title: 'Shared Library', desc: 'Everyone adds movies & shows, sorted by category' },
             { icon: <Shuffle size={22} />, color: 'plum', title: 'CinePop Picker', desc: "Can't decide? Let the spinner pop something on for you" },
             { icon: <Star size={22} />, color: 'amber', title: 'Rate & Share', desc: 'Review together and share your movie card with friends' },
           ].map((f, i) => (
