@@ -1,20 +1,33 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { useAuth } from './AuthProvider'
 import { Loader2 } from 'lucide-react'
 
-// Wrap any page that requires login. Redirects to /login if not authenticated.
+// Paths that should never redirect into onboarding (onboarding itself, plus
+// the invite-join flow which should complete uninterrupted).
+const ONBOARDING_EXEMPT_PREFIXES = ['/onboarding', '/join']
+
+// Wrap any page that requires login. Redirects to /login if not authenticated,
+// and to /onboarding if the user hasn't completed onboarding yet.
 export default function RequireAuth({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth()
+  const { user, profile, loading } = useAuth()
   const router = useRouter()
+  const pathname = usePathname()
+
+  const exempt = ONBOARDING_EXEMPT_PREFIXES.some(p => pathname?.startsWith(p))
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (loading) return
+    if (!user) {
       router.replace('/login')
+      return
     }
-  }, [loading, user, router])
+    if (!exempt && profile && profile.onboarding_completed === false) {
+      router.replace('/onboarding')
+    }
+  }, [loading, user, profile, exempt, router])
 
   if (loading) {
     return (
@@ -27,6 +40,11 @@ export default function RequireAuth({ children }: { children: React.ReactNode })
 
   if (!user) {
     // Redirecting — render nothing to avoid a flash of protected content
+    return null
+  }
+
+  if (!exempt && profile && profile.onboarding_completed === false) {
+    // Redirecting to onboarding — render nothing to avoid a flash of protected content
     return null
   }
 
