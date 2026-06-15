@@ -6,15 +6,15 @@ import Navbar from "@/components/layout/Navbar";
 import MovieCard from "@/components/ui/MovieCard";
 import AddMovieForm from "@/components/ui/AddMovieForm";
 import Onboarding from "@/components/ui/Onboarding";
-import { WatchlistItem, MediaType, WatchlistUser } from "@/types";
+import { WatchlistItem, MediaType } from "@/types";
 import { supabase } from "@/lib/supabase";
 import { fetchMovieInfo, fetchMovieById } from "@/lib/omdb";
+import { getCircleMembers } from "@/lib/circles";
 import { Film, Tv, Filter, Users } from "lucide-react";
 import { clsx } from "clsx";
 import RequireAuth from "@/components/auth/RequireAuth";
 import { useCircle } from "@/components/auth/CircleProvider";
-
-type FilterType = "all" | "movie" | "tv" | "Kristel" | "Eric" | "unwatched";
+import { useAuth } from "@/components/auth/AuthProvider";
 
 // Result returned to the add form so it can show feedback
 export type AddResult = { ok: boolean; duplicate?: boolean; title?: string };
@@ -27,12 +27,22 @@ const SUBTITLES = [
   "waiting for the couch",
 ];
 
+interface MemberLite {
+  user_id: string;
+  name: string;
+}
+
 function WatchlistInner() {
   const { activeCircle, loading: circlesLoading } = useCircle();
+  const { user, profile } = useAuth();
   const [items, setItems] = useState<WatchlistItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<FilterType>("all");
+  const [filter, setFilter] = useState<string>("all");
   const [subtitleIdx, setSubtitleIdx] = useState(0);
+  const [members, setMembers] = useState<MemberLite[]>([]);
+
+  const myName =
+    profile?.display_name || user?.email?.split("@")[0] || "Me";
 
   const loadItems = useCallback(async () => {
     if (!activeCircle) {
@@ -50,12 +60,25 @@ function WatchlistInner() {
     setLoading(false);
   }, [activeCircle]);
 
-  // Reload whenever the active circle changes
+  const loadMembers = useCallback(async () => {
+    if (!activeCircle) {
+      setMembers([]);
+      return;
+    }
+    const m = await getCircleMembers(activeCircle.id);
+    setMembers(
+      m.map((x) => ({
+        user_id: x.user_id,
+        name: x.profile?.display_name || "Member",
+      })),
+    );
+  }, [activeCircle]);
+
   useEffect(() => {
     loadItems();
-  }, [loadItems]);
+    loadMembers();
+  }, [loadItems, loadMembers]);
 
-  // Rotate the fun subtitle every few seconds
   useEffect(() => {
     const timer = setInterval(() => {
       setSubtitleIdx((i) => (i + 1) % SUBTITLES.length);
@@ -66,10 +89,9 @@ function WatchlistInner() {
   async function handleAdd(
     title: string,
     type: MediaType,
-    who: WatchlistUser,
     imdbID?: string,
   ): Promise<AddResult> {
-    if (!activeCircle) return { ok: false };
+    if (!activeCircle || !user) return { ok: false };
 
     const info = imdbID
       ? await fetchMovieById(imdbID)
@@ -77,7 +99,6 @@ function WatchlistInner() {
 
     const finalTitle = info?.Title || title;
 
-    // Duplicate check within this circle
     const isDuplicate = items.some(
       (i) =>
         i.title.toLowerCase().trim() === finalTitle.toLowerCase().trim() &&
@@ -90,7 +111,8 @@ function WatchlistInner() {
     const newItem = {
       title: finalTitle,
       type,
-      added_by: who,
+      added_by: myName,
+      added_by_id: user.id,
       circle_id: activeCircle.id,
       poster: info?.Poster && info.Poster !== "N/A" ? info.Poster : null,
       plot: info?.Plot && info.Plot !== "N/A" ? info.Plot : null,
@@ -129,9 +151,11 @@ function WatchlistInner() {
   const filtered = items.filter((i) => {
     if (filter === "movie") return i.type === "movie";
     if (filter === "tv") return i.type === "tv";
-    if (filter === "Kristel") return i.added_by === "Kristel";
-    if (filter === "Eric") return i.added_by === "Eric";
     if (filter === "unwatched") return !i.watched;
+    if (filter.startsWith("member:")) {
+      const id = filter.slice("member:".length);
+      return i.added_by_id === id;
+    }
     return true;
   });
 
@@ -139,14 +163,18 @@ function WatchlistInner() {
   const tvShows = filtered.filter((i) => i.type === "tv");
   const toWatchCount = items.filter((i) => !i.watched).length;
 
-  const filters: { value: FilterType; label: string }[] = [
+  // Base filters + one per circle member
+  const baseFilters: { value: string; label: string }[] = [
     { value: "all", label: "All" },
     { value: "unwatched", label: "To Watch" },
     { value: "movie", label: "Movies" },
     { value: "tv", label: "TV Shows" },
-    { value: "Kristel", label: "Kristel's picks" },
-    { value: "Eric", label: "Eric's picks" },
   ];
+  const memberFilters = members.map((m) => ({
+    value: `member:${m.user_id}`,
+    label: `${m.name}'s picks`,
+  }));
+  const filters = [...baseFilters, ...memberFilters];
 
   // No circle yet — nudge them to create/join one
   if (!circlesLoading && !activeCircle) {
@@ -196,7 +224,7 @@ function WatchlistInner() {
           </p>
         </div>
 
-        <AddMovieForm onAdd={handleAdd} />
+        <AddMovieForm onAdd={handleAdd} addingAs={myName} />
 
         <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-1">
           <Filter size={14} className="text-gray-400 flex-shrink-0" />
