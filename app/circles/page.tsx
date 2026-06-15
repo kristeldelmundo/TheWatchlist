@@ -7,6 +7,7 @@ import { useAuth } from '@/components/auth/AuthProvider'
 import { useCircle } from '@/components/auth/CircleProvider'
 import {
   createCircle,
+  updateCircle,
   joinCircleByCode,
   getCircleMembers,
   inviteLink,
@@ -14,7 +15,7 @@ import {
   addMemberByUserId,
 } from '@/lib/circles'
 import {
-  Plus, Users, Check, LogIn, Loader2, Sparkles, Copy, Link2, UserPlus, Search,
+  Plus, Users, Check, LogIn, Loader2, Sparkles, Link2, UserPlus, Search, Pencil, X,
 } from 'lucide-react'
 import { clsx } from 'clsx'
 
@@ -48,6 +49,12 @@ function CirclesInner() {
   const [inviting, setInviting] = useState(false)
   const [inviteMsg, setInviteMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
 
+  // Editing the active circle
+  const [editing, setEditing] = useState(false)
+  const [editName, setEditName] = useState('')
+  const [editEmoji, setEditEmoji] = useState('🍿')
+  const [savingEdit, setSavingEdit] = useState(false)
+
   const loadMembers = useCallback(async () => {
     if (!activeCircle) return
     const m = await getCircleMembers(activeCircle.id)
@@ -68,6 +75,8 @@ function CirclesInner() {
 
   useEffect(() => {
     loadMembers()
+    // Reset edit mode when switching circles
+    setEditing(false)
   }, [loadMembers])
 
   async function handleCreate() {
@@ -81,6 +90,29 @@ function CirclesInner() {
     setCreating(false)
     setNewName('')
     setNewEmoji('🍿')
+  }
+
+  function startEditing() {
+    if (!activeCircle) return
+    setEditName(activeCircle.name)
+    setEditEmoji(activeCircle.emoji)
+    setEditing(true)
+  }
+
+  async function handleSaveEdit() {
+    if (!editName.trim() || !activeCircle || savingEdit) return
+    setSavingEdit(true)
+    const ok = await updateCircle(activeCircle.id, {
+      name: editName.trim(),
+      emoji: editEmoji,
+    })
+    if (ok) {
+      const updated = await refreshCircles()
+      const refreshed = updated.find((c) => c.id === activeCircle.id)
+      if (refreshed) setActiveCircle(refreshed)
+    }
+    setSavingEdit(false)
+    setEditing(false)
   }
 
   async function handleJoin() {
@@ -208,95 +240,165 @@ function CirclesInner() {
             {/* Active circle: invite + members panel */}
             {activeCircle && (
               <div className="glass rounded-2xl p-4 mb-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-2xl">{activeCircle.emoji}</span>
-                  <div>
-                    <h2 className="font-medium text-gray-800">{activeCircle.name}</h2>
-                    <p className="text-xs text-gray-400">Invite people to share this watchlist</p>
-                  </div>
-                </div>
-
-                {/* Invite link */}
-                <button
-                  onClick={copyInvite}
-                  className="w-full flex items-center justify-center gap-2 bg-rose-50 hover:bg-rose-100 text-rose-600 font-medium py-2.5 rounded-xl text-sm transition-all mb-3"
-                >
-                  {copied ? <Check size={15} /> : <Link2 size={15} />}
-                  {copied ? 'Invite link copied!' : 'Copy invite link'}
-                </button>
-
-                {/* Invite by email (owner only) */}
-                {isOwner && (
-                  <div className="mb-3">
-                    <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">
-                      Add by email
-                    </label>
-                    <div className="flex gap-2">
-                      <div className="relative flex-1">
-                        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" />
-                        <input
-                          value={inviteEmail}
-                          onChange={(e) => setInviteEmail(e.target.value)}
-                          placeholder="friend@email.com"
-                          className="w-full bg-white/80 border border-rose-100 rounded-xl pl-9 pr-3 py-2 text-sm outline-none focus:border-rose-300"
-                        />
-                      </div>
+                {editing ? (
+                  /* Edit mode */
+                  <div className="mb-1">
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                        Edit circle
+                      </label>
                       <button
-                        onClick={handleInviteByEmail}
-                        disabled={!inviteEmail.trim() || inviting}
-                        className="flex items-center gap-1.5 bg-rose-500 hover:bg-rose-600 disabled:bg-rose-300 text-white font-medium px-3 rounded-xl text-sm transition-all"
+                        onClick={() => setEditing(false)}
+                        className="text-gray-400 hover:text-gray-600"
+                        aria-label="Cancel edit"
                       >
-                        {inviting ? <Loader2 size={14} className="animate-spin" /> : <UserPlus size={14} />}
-                        Add
+                        <X size={16} />
                       </button>
                     </div>
-                    {inviteMsg && (
-                      <p
-                        className={clsx(
-                          'text-xs mt-2 px-3 py-2 rounded-lg',
-                          inviteMsg.kind === 'ok' ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-700',
-                        )}
+                    <input
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      placeholder="Circle name"
+                      className="w-full bg-white/80 border border-rose-100 rounded-xl px-3 py-2.5 text-sm mb-3 outline-none focus:border-rose-300"
+                    />
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {EMOJI_CHOICES.map((e) => (
+                        <button
+                          key={e}
+                          onClick={() => setEditEmoji(e)}
+                          className={clsx(
+                            'w-10 h-10 rounded-xl text-xl transition-all',
+                            editEmoji === e
+                              ? 'bg-rose-100 ring-2 ring-rose-400 scale-110'
+                              : 'bg-white/60 hover:bg-rose-50',
+                          )}
+                        >
+                          {e}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleSaveEdit}
+                        disabled={!editName.trim() || savingEdit}
+                        className="flex-1 flex items-center justify-center gap-2 bg-rose-500 hover:bg-rose-600 disabled:bg-rose-300 text-white font-medium py-2.5 rounded-xl text-sm transition-all"
                       >
-                        {inviteMsg.text}
-                      </p>
+                        {savingEdit ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                        Save changes
+                      </button>
+                      <button
+                        onClick={() => setEditing(false)}
+                        className="px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:bg-gray-100 transition-all"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  /* View mode */
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-2xl">{activeCircle.emoji}</span>
+                    <div className="flex-1 min-w-0">
+                      <h2 className="font-medium text-gray-800">{activeCircle.name}</h2>
+                      <p className="text-xs text-gray-400">Invite people to share this watchlist</p>
+                    </div>
+                    {isOwner && (
+                      <button
+                        onClick={startEditing}
+                        className="flex items-center gap-1 text-xs text-gray-400 hover:text-rose-500 bg-white/60 hover:bg-rose-50 px-2.5 py-1.5 rounded-full transition-all"
+                        title="Edit circle name & emoji"
+                      >
+                        <Pencil size={12} /> Edit
+                      </button>
                     )}
                   </div>
                 )}
 
-                {/* Member list */}
-                <label className="block text-xs font-medium text-gray-500 mb-2 uppercase tracking-wide">
-                  Members ({members.length})
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {members.map((m) => {
-                    const nm = m.profile?.display_name || 'Member'
-                    const isPurple = m.profile?.accent_color === 'purple'
-                    return (
-                      <div
-                        key={m.user_id}
-                        className="flex items-center gap-2 bg-white/70 border border-rose-100 rounded-full pl-1 pr-3 py-1"
-                      >
-                        {m.profile?.avatar_url ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={m.profile.avatar_url} alt={nm} className="w-6 h-6 rounded-full object-cover" />
-                        ) : (
-                          <span
+                {!editing && (
+                  <>
+                    {/* Invite link */}
+                    <button
+                      onClick={copyInvite}
+                      className="w-full flex items-center justify-center gap-2 bg-rose-50 hover:bg-rose-100 text-rose-600 font-medium py-2.5 rounded-xl text-sm transition-all mb-3"
+                    >
+                      {copied ? <Check size={15} /> : <Link2 size={15} />}
+                      {copied ? 'Invite link copied!' : 'Copy invite link'}
+                    </button>
+
+                    {/* Invite by email (owner only) */}
+                    {isOwner && (
+                      <div className="mb-3">
+                        <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">
+                          Add by email
+                        </label>
+                        <div className="flex gap-2">
+                          <div className="relative flex-1">
+                            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" />
+                            <input
+                              value={inviteEmail}
+                              onChange={(e) => setInviteEmail(e.target.value)}
+                              placeholder="friend@email.com"
+                              className="w-full bg-white/80 border border-rose-100 rounded-xl pl-9 pr-3 py-2 text-sm outline-none focus:border-rose-300"
+                            />
+                          </div>
+                          <button
+                            onClick={handleInviteByEmail}
+                            disabled={!inviteEmail.trim() || inviting}
+                            className="flex items-center gap-1.5 bg-rose-500 hover:bg-rose-600 disabled:bg-rose-300 text-white font-medium px-3 rounded-xl text-sm transition-all"
+                          >
+                            {inviting ? <Loader2 size={14} className="animate-spin" /> : <UserPlus size={14} />}
+                            Add
+                          </button>
+                        </div>
+                        {inviteMsg && (
+                          <p
                             className={clsx(
-                              'w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold',
-                              isPurple ? 'bg-purple-100 text-purple-600' : 'bg-rose-100 text-rose-600',
+                              'text-xs mt-2 px-3 py-2 rounded-lg',
+                              inviteMsg.kind === 'ok' ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-700',
                             )}
                           >
-                            {nm.charAt(0).toUpperCase()}
-                          </span>
-                        )}
-                        <span className="text-xs text-gray-600">{nm}</span>
-                        {m.role === 'owner' && (
-                          <span className="text-[10px] text-rose-400 font-medium">owner</span>
+                            {inviteMsg.text}
+                          </p>
                         )}
                       </div>
-                    )
-                  })}
-                </div>
+                    )}
+
+                    {/* Member list */}
+                    <label className="block text-xs font-medium text-gray-500 mb-2 uppercase tracking-wide">
+                      Members ({members.length})
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {members.map((m) => {
+                        const nm = m.profile?.display_name || 'Member'
+                        const isPurple = m.profile?.accent_color === 'purple'
+                        return (
+                          <div
+                            key={m.user_id}
+                            className="flex items-center gap-2 bg-white/70 border border-rose-100 rounded-full pl-1 pr-3 py-1"
+                          >
+                            {m.profile?.avatar_url ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={m.profile.avatar_url} alt={nm} className="w-6 h-6 rounded-full object-cover" />
+                            ) : (
+                              <span
+                                className={clsx(
+                                  'w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold',
+                                  isPurple ? 'bg-purple-100 text-purple-600' : 'bg-rose-100 text-rose-600',
+                                )}
+                              >
+                                {nm.charAt(0).toUpperCase()}
+                              </span>
+                            )}
+                            <span className="text-xs text-gray-600">{nm}</span>
+                            {m.role === 'owner' && (
+                              <span className="text-[10px] text-rose-400 font-medium">owner</span>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </>
+                )}
               </div>
             )}
 

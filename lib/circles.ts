@@ -25,6 +25,18 @@ export async function createCircle(
   return data.id as string
 }
 
+// Update a circle's name and/or emoji (owner-only, enforced by RLS).
+export async function updateCircle(
+  circleId: string,
+  updates: { name?: string; emoji?: string },
+): Promise<boolean> {
+  const { error } = await supabase
+    .from('circles')
+    .update(updates)
+    .eq('id', circleId)
+  return !error
+}
+
 // Join a circle by its invite code.
 // Uses a secure DB function so new joiners can find the circle even though
 // RLS only lets members SELECT circles directly.
