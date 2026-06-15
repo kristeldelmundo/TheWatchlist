@@ -117,17 +117,57 @@ export async function searchUserByEmail(email: string): Promise<FoundUser | null
   return data[0] as FoundUser
 }
 
-// Invite a found user to a circle by adding them as a member (owner-only).
-export async function addMemberByUserId(
+// Invite a found user to a circle. Creates a PENDING invite they must accept.
+export async function inviteUserToCircle(
   circleId: string,
   userId: string,
 ): Promise<{ ok: boolean; reason?: string }> {
-  const { data, error } = await supabase.rpc('add_member_to_circle', {
+  const { data, error } = await supabase.rpc('invite_user_to_circle', {
     target_circle: circleId,
     target_user: userId,
   })
   if (error) return { ok: false, reason: 'error' }
-  if (data === 'added') return { ok: true }
+  if (data === 'invited') return { ok: true }
+  return { ok: false, reason: data as string }
+}
+
+export interface PendingInvite {
+  invite_id: string
+  circle_id: string
+  circle_name: string
+  circle_emoji: string
+  invited_by_name: string
+  created_at: string
+}
+
+// Get my pending invitations (circles others have invited me to).
+export async function getMyPendingInvites(): Promise<PendingInvite[]> {
+  const { data, error } = await supabase.rpc('my_pending_invites')
+  if (error || !data) return []
+  return data as PendingInvite[]
+}
+
+// Accept an invitation — joins the circle.
+export async function acceptInvite(
+  inviteId: string,
+): Promise<{ ok: boolean; reason?: string }> {
+  const { data, error } = await supabase.rpc('accept_circle_invite', {
+    invite_id: inviteId,
+  })
+  if (error) return { ok: false, reason: 'error' }
+  if (data === 'accepted') return { ok: true }
+  return { ok: false, reason: data as string }
+}
+
+// Decline an invitation.
+export async function declineInvite(
+  inviteId: string,
+): Promise<{ ok: boolean; reason?: string }> {
+  const { data, error } = await supabase.rpc('decline_circle_invite', {
+    invite_id: inviteId,
+  })
+  if (error) return { ok: false, reason: 'error' }
+  if (data === 'declined') return { ok: true }
   return { ok: false, reason: data as string }
 }
 

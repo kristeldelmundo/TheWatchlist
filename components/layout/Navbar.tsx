@@ -16,6 +16,7 @@ import {
 import { clsx } from "clsx";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useCircle } from "@/components/auth/CircleProvider";
+import InviteBell from "@/components/layout/InviteBell";
 
 const navItems = [
   { href: "/watchlist", label: "Watchlist", icon: Film },
@@ -131,65 +132,68 @@ export default function Navbar() {
           ))}
         </div>
 
-        {/* Profile chip + menu */}
+        {/* Invite notifications + profile chip */}
         {user ? (
-          <div className="relative flex-shrink-0" ref={menuRef}>
-            <button
-              onClick={() => setMenuOpen((o) => !o)}
-              className="flex items-center gap-1.5 pl-1 pr-2 py-1 rounded-full hover:bg-rose-50 transition-colors"
-            >
-              {profile?.avatar_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={profile.avatar_url}
-                  alt={name}
-                  className="w-6 h-6 rounded-full object-cover"
-                />
-              ) : (
-                <span
-                  className={clsx(
-                    "w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold",
-                    accent === "purple"
-                      ? "bg-purple-100 text-purple-500"
-                      : "bg-rose-100 text-rose-500",
-                  )}
-                >
-                  {initial}
-                </span>
-              )}
-              <ChevronDown size={12} className="text-gray-400" />
-            </button>
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <InviteBell />
+            <div className="relative" ref={menuRef}>
+              <button
+                onClick={() => setMenuOpen((o) => !o)}
+                className="flex items-center gap-1.5 pl-1 pr-2 py-1 rounded-full hover:bg-rose-50 transition-colors"
+              >
+                {profile?.avatar_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={profile.avatar_url}
+                    alt={name}
+                    className="w-6 h-6 rounded-full object-cover"
+                  />
+                ) : (
+                  <span
+                    className={clsx(
+                      "w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold",
+                      accent === "purple"
+                        ? "bg-purple-100 text-purple-500"
+                        : "bg-rose-100 text-rose-500",
+                    )}
+                  >
+                    {initial}
+                  </span>
+                )}
+                <ChevronDown size={12} className="text-gray-400" />
+              </button>
 
-            {menuOpen && (
-              <div className="absolute right-0 mt-2 w-44 bg-white rounded-xl border border-rose-100 shadow-xl shadow-rose-100/50 overflow-hidden">
-                <div className="px-3 py-2 border-b border-rose-50">
-                  <p className="text-sm font-medium text-gray-800 truncate">
-                    {name}
-                  </p>
-                  <p className="text-xs text-gray-400 truncate">{user.email}</p>
+              {menuOpen && (
+                <div className="absolute right-0 mt-2 w-44 bg-white rounded-xl border border-rose-100 shadow-xl shadow-rose-100/50 overflow-hidden">
+                  <div className="px-3 py-2 border-b border-rose-50">
+                    <p className="text-sm font-medium text-gray-800 truncate">
+                      {name}
+                    </p>
+                    <p className="text-xs text-gray-400 truncate">{user.email}</p>
+                  </div>
+                  <Link
+                    href="/profile"
+                    onClick={() => setMenuOpen(false)}
+                    className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:bg-rose-50 transition-colors"
+                  >
+                    <UserIcon size={14} /> My Profile
+                  </Link>
+                  <Link
+                    href="/circles"
+                    onClick={() => setMenuOpen(false)}
+                    className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:bg-rose-50 transition-colors"
+                  >
+                    <Users size={14} /> My Circles
+                  </Link>
+                  <button
+                    onClick={handleSignOut}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors"
+                  >
+                    <LogOut size={14} /> Log out
+                  </button>
                 </div>
-                <Link
-                  href="/profile"
-                  onClick={() => setMenuOpen(false)}
-                  className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:bg-rose-50 transition-colors"
-                >
-                  <UserIcon size={14} /> My Profile
-                </Link>
-                <Link
-                  href="/circles"
-                  onClick={() => setMenuOpen(false)}
-                  className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:bg-rose-50 transition-colors"
-                >
-                  <Users size={14} /> My Circles
-                </Link>
-                <button
-                  onClick={handleSignOut}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors"
-                >
-                  <LogOut size={14} /> Log out
-                </button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         ) : (
           <Link
