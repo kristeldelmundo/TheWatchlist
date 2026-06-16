@@ -69,7 +69,7 @@ function AboutInner() {
             Hi, I&apos;m <span className="gradient-text italic">Kristel</span> 🍿
           </h1>
           <p className="text-sm text-gray-500 max-w-md mx-auto leading-relaxed">
-            A vibe coder with a keen eye for design — I built CinePop so my boyfriend and I could stop arguing about what to watch, and start actually watching it. 💕
+            I built CinePop so my boyfriend and I could stop arguing about what to watch, and start actually watching it. 💕
           </p>
         </div>
 
@@ -99,7 +99,7 @@ function AboutInner() {
             <h2 className="font-display text-lg font-bold text-gray-800">Made by me</h2>
           </div>
           <p className="text-[14px] text-gray-600 leading-relaxed mb-4">
-            I&apos;m a creative who loves where fashion, film, and code meet — a self-taught vibe coder figuring it out as I go. CinePop is one of my passion projects. You can find more of my work here:
+            CinePop is one of my passion projects — something I made for me and the people I love watching with. You can find more of my work here:
           </p>
           <div className="flex flex-wrap gap-2">
             {SOCIALS.map((s) => (
