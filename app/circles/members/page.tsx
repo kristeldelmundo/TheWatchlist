@@ -7,7 +7,8 @@ import RequireAuth from '@/components/auth/RequireAuth'
 import { useAuth } from '@/components/auth/AuthProvider'
 import { useCircle } from '@/components/auth/CircleProvider'
 import { getCircleMembers } from '@/lib/circles'
-import { ChevronLeft, ChevronRight, Loader2, Users } from 'lucide-react'
+import { loadProfileStats } from '@/lib/profile'
+import { ChevronLeft, ChevronRight, Loader2, Users, Star } from 'lucide-react'
 import { clsx } from 'clsx'
 
 interface Member {
@@ -16,10 +17,25 @@ interface Member {
   profile: { id: string; display_name: string | null; avatar_url: string | null; accent_color: string | null } | null
 }
 
+// Lightweight activity hint per member — review count + their most common
+// reaction, so the list gives a reason to tap in rather than just naming
+// people.
+interface MemberActivity {
+  reviews: number
+  topReaction: string | null
+}
+
+const REACTION_EMOJI: Record<string, string> = {
+  Obsessed: '😍', 'So good': '🍿', 'We cried': '😭', 'Laughed so hard': '🤣',
+  'Plot twist!': '🤯', 'Fell asleep': '😴', Meh: '😐', 'Would rewatch': '🔁',
+  'Perfect date night': '💑', "So bad it's good": '💀',
+}
+
 function MembersInner() {
   const { user } = useAuth()
   const { activeCircle } = useCircle()
   const [members, setMembers] = useState<Member[]>([])
+  const [activity, setActivity] = useState<Record<string, MemberActivity>>({})
   const [loading, setLoading] = useState(true)
 
   const load = useCallback(async () => {
@@ -28,6 +44,15 @@ function MembersInner() {
     const m = await getCircleMembers(activeCircle.id)
     setMembers(m as Member[])
     setLoading(false)
+
+    // Activity hints load in the background — don't block the list itself.
+    const entries = await Promise.all(
+      (m as Member[]).map(async (member) => {
+        const stats = await loadProfileStats(member.user_id)
+        return [member.user_id, { reviews: stats.reviews, topReaction: stats.topReaction }] as const
+      }),
+    )
+    setActivity(Object.fromEntries(entries))
   }, [activeCircle])
 
   useEffect(() => { load() }, [load])
@@ -66,6 +91,7 @@ function MembersInner() {
                   const nm = m.profile?.display_name || 'Member'
                   const isPurple = m.profile?.accent_color === 'purple'
                   const isMe = m.user_id === user?.id
+                  const act = activity[m.user_id]
                   return (
                     <Link
                       key={m.user_id}
@@ -85,7 +111,18 @@ function MembersInner() {
                       )}
                       <div className="flex-1 min-w-0">
                         <div className="font-medium text-gray-800">{nm}{isMe ? ' (you)' : ''}</div>
-                        {m.role === 'owner' && <div className="text-[11px] text-rose-400 font-medium">owner</div>}
+                        <div className="flex items-center gap-2 mt-0.5">
+                          {m.role === 'owner' && <span className="text-[11px] text-rose-400 font-medium">owner</span>}
+                          {act !== undefined && (
+                            <span className="text-[11px] text-gray-400 flex items-center gap-1">
+                              <Star size={10} className="text-amber-400" />
+                              {act.reviews} {act.reviews === 1 ? 'review' : 'reviews'}
+                              {act.topReaction && (
+                                <span className="ml-0.5">{REACTION_EMOJI[act.topReaction] || ''}</span>
+                              )}
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <ChevronRight size={18} className="text-gray-300" />
                     </Link>
