@@ -17,8 +17,9 @@ import {
   leaveCircle,
   removeCircleMember,
 } from '@/lib/circles'
+import { loadProfileStats } from '@/lib/profile'
 import {
-  Plus, Users, Check, LogIn, Loader2, Sparkles, Link2, UserPlus, Search, Pencil, X, LogOut, ChevronRight, ChevronDown,
+  Plus, Users, Check, LogIn, Loader2, Sparkles, Link2, UserPlus, Search, Pencil, X, LogOut, ChevronRight, ChevronDown, Star,
 } from 'lucide-react'
 import { clsx } from 'clsx'
 
@@ -28,6 +29,19 @@ interface Member {
   user_id: string
   role: string
   profile: { id: string; display_name: string | null; avatar_url: string | null; accent_color: string | null } | null
+}
+
+// Lightweight activity hint per friend — review count + their most common
+// reaction, so the list gives a reason to tap in rather than just naming people.
+interface MemberActivity {
+  reviews: number
+  topReaction: string | null
+}
+
+const REACTION_EMOJI: Record<string, string> = {
+  Obsessed: '😍', 'So good': '🍿', 'We cried': '😭', 'Laughed so hard': '🤣',
+  'Plot twist!': '🤯', 'Fell asleep': '😴', Meh: '😐', 'Would rewatch': '🔁',
+  'Perfect date night': '💑', "So bad it's good": '💀',
 }
 
 // A cute confirmation dialog, used for leaving / removing.
@@ -118,6 +132,7 @@ function CirclesInner() {
 
   const [memberCounts, setMemberCounts] = useState<Record<string, number>>({})
   const [members, setMembers] = useState<Member[]>([])
+  const [activity, setActivity] = useState<Record<string, MemberActivity>>({})
   const [copied, setCopied] = useState(false)
 
   // Invite by email
@@ -150,6 +165,15 @@ function CirclesInner() {
     if (!activeCircle) return
     const m = await getCircleMembers(activeCircle.id)
     setMembers(m as Member[])
+
+    // Activity hints (review counts) load in the background — don't block the list.
+    const entries = await Promise.all(
+      (m as Member[]).map(async (member) => {
+        const stats = await loadProfileStats(member.user_id)
+        return [member.user_id, { reviews: stats.reviews, topReaction: stats.topReaction }] as const
+      }),
+    )
+    setActivity(Object.fromEntries(entries))
   }, [activeCircle])
 
   useEffect(() => {
@@ -269,7 +293,7 @@ function CirclesInner() {
   // Open the cute confirm dialog for removing a member.
   function askRemoveMember(member: Member) {
     if (!activeCircle || removingId) return
-    const nm = member.profile?.display_name || 'this member'
+    const nm = member.profile?.display_name || 'this friend'
     setConfirmConfig({
       emoji: '🫶',
       title: `Remove ${nm}?`,
@@ -282,7 +306,7 @@ function CirclesInner() {
 
   async function doRemoveMember(member: Member) {
     if (!activeCircle) return
-    const nm = member.profile?.display_name || 'this member'
+    const nm = member.profile?.display_name || 'this friend'
     setConfirmBusy(true)
     setRemovingId(member.user_id)
     setManageMsg(null)
@@ -475,7 +499,7 @@ function CirclesInner() {
 
                     {/* Invite by email (owner only) */}
                     {isOwner && (
-                      <div className="mb-3">
+                      <div className="mb-4">
                         <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">
                           Invite by email
                         </label>
@@ -511,62 +535,67 @@ function CirclesInner() {
                       </div>
                     )}
 
-                    {/* Member list — tap a member to view their profile */}
-                    <div className="flex items-center justify-between mb-2">
-                      <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide">
-                        Members ({members.length})
-                      </label>
-                      <Link
-                        href="/circles/members"
-                        className="flex items-center gap-0.5 text-xs text-rose-400 hover:text-rose-600 font-medium transition-colors"
-                      >
-                        View all <ChevronRight size={12} />
-                      </Link>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
+                    {/* Friends — full tappable list right here, no redirect */}
+                    <label className="block text-xs font-medium text-gray-500 mb-2 uppercase tracking-wide">
+                      Friends ({members.length})
+                    </label>
+                    <div className="space-y-2">
                       {members.map((m) => {
                         const nm = m.profile?.display_name || 'Member'
                         const isPurple = m.profile?.accent_color === 'purple'
                         const isMemberOwner = m.role === 'owner'
                         const isMe = m.user_id === user?.id
+                        const act = activity[m.user_id]
                         // Anyone can remove anyone except the owner. (You leave via the Leave button, not the X.)
                         const canRemove = !isMemberOwner && !isMe
                         return (
                           <div
                             key={m.user_id}
-                            className="flex items-center gap-2 bg-white/70 border border-rose-100 rounded-full pl-1 pr-2 py-1"
+                            className="flex items-center gap-3 bg-white/70 border border-rose-100 rounded-2xl p-2.5 transition-all hover:shadow-md hover:shadow-rose-50"
                           >
-                            <Link href={`/@${m.user_id}`} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+                            <Link href={`/@${m.user_id}`} className="flex items-center gap-3 flex-1 min-w-0 hover:opacity-80 transition-opacity">
                               {m.profile?.avatar_url ? (
                                 // eslint-disable-next-line @next/next/no-img-element
-                                <img src={m.profile.avatar_url} alt={nm} className="w-6 h-6 rounded-full object-cover" />
+                                <img src={m.profile.avatar_url} alt={nm} className="w-10 h-10 rounded-full object-cover ring-2 ring-white shadow flex-shrink-0" />
                               ) : (
                                 <span
                                   className={clsx(
-                                    'w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold',
+                                    'w-10 h-10 rounded-full flex items-center justify-center text-base font-bold flex-shrink-0',
                                     isPurple ? 'bg-purple-100 text-purple-600' : 'bg-rose-100 text-rose-600',
                                   )}
                                 >
                                   {nm.charAt(0).toUpperCase()}
                                 </span>
                               )}
-                              <span className="text-xs text-gray-600">{nm}{isMe ? ' (you)' : ''}</span>
+                              <div className="flex-1 min-w-0">
+                                <div className="text-sm font-medium text-gray-800 truncate">{nm}{isMe ? ' (you)' : ''}</div>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                  {isMemberOwner && <span className="text-[11px] text-rose-400 font-medium">owner</span>}
+                                  {act !== undefined && (
+                                    <span className="text-[11px] text-gray-400 flex items-center gap-1">
+                                      <Star size={10} className="text-amber-400" />
+                                      {act.reviews} {act.reviews === 1 ? 'review' : 'reviews'}
+                                      {act.topReaction && (
+                                        <span className="ml-0.5">{REACTION_EMOJI[act.topReaction] || ''}</span>
+                                      )}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <ChevronRight size={16} className="text-gray-300 flex-shrink-0" />
                             </Link>
-                            {isMemberOwner && (
-                              <span className="text-[10px] text-rose-400 font-medium">owner</span>
-                            )}
                             {canRemove && (
                               <button
                                 onClick={() => askRemoveMember(m)}
                                 disabled={removingId === m.user_id}
-                                className="ml-0.5 w-4 h-4 rounded-full flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 transition-all"
+                                className="w-7 h-7 rounded-full flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 transition-all flex-shrink-0"
                                 title={`Remove ${nm}`}
                                 aria-label={`Remove ${nm}`}
                               >
                                 {removingId === m.user_id ? (
-                                  <Loader2 size={11} className="animate-spin" />
+                                  <Loader2 size={13} className="animate-spin" />
                                 ) : (
-                                  <X size={12} />
+                                  <X size={14} />
                                 )}
                               </button>
                             )}
