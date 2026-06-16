@@ -17,6 +17,7 @@ import {
 } from '@/lib/theme'
 import CatalogPicker, { CatalogChoice } from '@/components/ui/CatalogPicker'
 import ShareProfileModal from '@/components/profile/ShareProfileModal'
+import ReviewsList from '@/components/profile/ReviewsList'
 
 const BIO_MAX = 160
 const TAGLINE_MAX = 80
@@ -455,91 +456,101 @@ function ProfileInner() {
 
         {/* ===================== VIEW MODE — one wide card ===================== */}
         {mode === 'view' && (
-          <div ref={cardRef} className="cp-card rounded-[22px] p-7 shadow-lg shadow-black/5" style={cardStyle}>
-            {/* Header row */}
-            <div className="flex gap-5 items-center">
-              {avatarUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={avatarUrl} alt={displayName || 'You'} className="rounded-full object-cover flex-shrink-0 ring-2 ring-white shadow" style={{ width: 80, height: 80 }} />
-              ) : (
-                <span className="rounded-full flex items-center justify-center text-4xl font-bold text-white flex-shrink-0 font-display" style={{ width: 80, height: 80, background: accentObj.ring }}>
-                  {initial}
-                </span>
-              )}
-              <div className="min-w-0 flex-1">
-                <div className="font-display text-3xl font-bold leading-tight" style={{ color: nameColor || '#1f2937' }}>{displayName || 'Your name'}</div>
-                {profile?.username && (
-                  <div className="text-[13px] font-medium mt-0.5" style={{ color: customTextColor || '#9ca3af' }}>@{profile.username}</div>
+          <>
+            <div ref={cardRef} className="cp-card rounded-[22px] p-7 shadow-lg shadow-black/5" style={cardStyle}>
+              {/* Header row */}
+              <div className="flex gap-5 items-center">
+                {avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={avatarUrl} alt={displayName || 'You'} className="rounded-full object-cover flex-shrink-0 ring-2 ring-white shadow" style={{ width: 80, height: 80 }} />
+                ) : (
+                  <span className="rounded-full flex items-center justify-center text-4xl font-bold text-white flex-shrink-0 font-display" style={{ width: 80, height: 80, background: accentObj.ring }}>
+                    {initial}
+                  </span>
                 )}
-                {genres.length > 0 && (
-                  <div className="text-base font-display italic font-bold leading-tight mt-1" style={{ color: customTextColor || '#a855f7' }}>✨ {viewerType}</div>
-                )}
-                {tagline && <div className="text-[15px] italic truncate mt-1" style={{ color: customTextColor || '#fb7093' }}>&ldquo;{tagline}&rdquo;</div>}
-                {showNowWatching && (
-                  <div className="flex items-center gap-1.5 mt-1.5 min-w-0">
-                    <span className="cp-live flex-shrink-0" />
-                    <span className="text-[13px] truncate" style={{ color: bodyColor || '#6b7280' }}>
-                      watching <span className="font-semibold" style={{ color: nameColor || '#374151' }}>{nowWatching}</span>
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {bio && <p className="text-[15px] leading-relaxed mt-4" style={{ color: bodyColor || '#4b5563' }}>{bio}</p>}
-
-            {/* Stats strip */}
-            <div className="flex items-center mt-5 py-4 border-t border-b" style={{ borderColor: 'rgba(243,216,226,0.8)' }}>
-              <MiniStat icon="🍿" n={stats.watched} label="Watched" ring={accentObj.ring} />
-              <MiniDiv />
-              <MiniStat icon="⭐" n={stats.reviews} label="Reviews" ring={accentObj.ring} />
-              <MiniDiv />
-              <MiniStat icon="📊" n={stats.avg > 0 ? stats.avg : '—'} label="Avg" ring={accentObj.ring} />
-              <MiniDiv />
-              <MiniStat icon={stats.topReaction ? REACTION_EMOJI[stats.topReaction] || '🍿' : '✨'} n="" label="React" ring={accentObj.ring} />
-            </div>
-
-            {/* Genres */}
-            {genres.length > 0 && (
-              <div className="mt-5">
-                <div className="text-[12px] font-bold uppercase tracking-wide mb-2.5" style={{ color: customTextColor || '#9ca3af' }}>Genres</div>
-                <div className="flex flex-wrap gap-2">
-                  {genres.map(name => {
-                    const g = genreByName(name)
-                    return (
-                      <span key={name} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[14px] font-semibold"
-                        style={g ? { background: g.bg, color: g.text } : undefined}>
-                        {g ? `${g.emoji} ` : ''}{name}
+                <div className="min-w-0 flex-1">
+                  <div className="font-display text-3xl font-bold leading-tight" style={{ color: nameColor || '#1f2937' }}>{displayName || 'Your name'}</div>
+                  {profile?.username && (
+                    <div className="text-[13px] font-medium mt-0.5" style={{ color: customTextColor || '#9ca3af' }}>@{profile.username}</div>
+                  )}
+                  {genres.length > 0 && (
+                    <div className="text-base font-display italic font-bold leading-tight mt-1" style={{ color: customTextColor || '#a855f7' }}>✨ {viewerType}</div>
+                  )}
+                  {tagline && <div className="text-[15px] italic truncate mt-1" style={{ color: customTextColor || '#fb7093' }}>&ldquo;{tagline}&rdquo;</div>}
+                  {showNowWatching && (
+                    <div className="flex items-center gap-1.5 mt-1.5 min-w-0">
+                      <span className="cp-live flex-shrink-0" />
+                      <span className="text-[13px] truncate" style={{ color: bodyColor || '#6b7280' }}>
+                        watching <span className="font-semibold" style={{ color: nameColor || '#374151' }}>{nowWatching}</span>
                       </span>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* If I had to pick — editable categories, 2-col grid */}
-            {hasAnyPick && (
-              <div className="mt-5">
-                <div className="text-[12px] font-bold uppercase tracking-wide mb-2.5" style={{ color: customTextColor || '#9ca3af' }}>If I had to pick…</div>
-                <div className="grid grid-cols-2 gap-4">
-                  {visiblePicks.map((p, i) => (
-                    <div key={i} className="flex gap-2.5 items-center min-w-0">
-                      <div className="rounded-md flex-shrink-0 flex items-center justify-center bg-rose-50 overflow-hidden" style={{ width: 44, height: 64 }}>
-                        {p.poster ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={p.poster} alt={p.title} className="w-full h-full object-cover" />
-                        ) : <span className="text-xl">{p.emoji || '🎬'}</span>}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="text-[11px] uppercase tracking-wide font-bold leading-tight" style={{ color: customTextColor || '#fb7093' }}>{p.emoji} {p.label}</div>
-                        <div className="text-[15px] font-semibold leading-tight truncate mt-0.5" style={{ color: nameColor || '#1f2937' }}>{p.title}</div>
-                      </div>
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
+
+              {bio && <p className="text-[15px] leading-relaxed mt-4" style={{ color: bodyColor || '#4b5563' }}>{bio}</p>}
+
+              {/* Stats strip */}
+              <div className="flex items-center mt-5 py-4 border-t border-b" style={{ borderColor: 'rgba(243,216,226,0.8)' }}>
+                <MiniStat icon="🍿" n={stats.watched} label="Watched" ring={accentObj.ring} />
+                <MiniDiv />
+                <MiniStat icon="⭐" n={stats.reviews} label="Reviews" ring={accentObj.ring} />
+                <MiniDiv />
+                <MiniStat icon="📊" n={stats.avg > 0 ? stats.avg : '—'} label="Avg" ring={accentObj.ring} />
+                <MiniDiv />
+                <MiniStat icon={stats.topReaction ? REACTION_EMOJI[stats.topReaction] || '🍿' : '✨'} n="" label="React" ring={accentObj.ring} />
+              </div>
+
+              {/* Genres */}
+              {genres.length > 0 && (
+                <div className="mt-5">
+                  <div className="text-[12px] font-bold uppercase tracking-wide mb-2.5" style={{ color: customTextColor || '#9ca3af' }}>Genres</div>
+                  <div className="flex flex-wrap gap-2">
+                    {genres.map(name => {
+                      const g = genreByName(name)
+                      return (
+                        <span key={name} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[14px] font-semibold"
+                          style={g ? { background: g.bg, color: g.text } : undefined}>
+                          {g ? `${g.emoji} ` : ''}{name}
+                        </span>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* If I had to pick — editable categories, 2-col grid */}
+              {hasAnyPick && (
+                <div className="mt-5">
+                  <div className="text-[12px] font-bold uppercase tracking-wide mb-2.5" style={{ color: customTextColor || '#9ca3af' }}>If I had to pick…</div>
+                  <div className="grid grid-cols-2 gap-4">
+                    {visiblePicks.map((p, i) => (
+                      <div key={i} className="flex gap-2.5 items-center min-w-0">
+                        <div className="rounded-md flex-shrink-0 flex items-center justify-center bg-rose-50 overflow-hidden" style={{ width: 44, height: 64 }}>
+                          {p.poster ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={p.poster} alt={p.title} className="w-full h-full object-cover" />
+                          ) : <span className="text-xl">{p.emoji || '🎬'}</span>}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-[11px] uppercase tracking-wide font-bold leading-tight" style={{ color: customTextColor || '#fb7093' }}>{p.emoji} {p.label}</div>
+                          <div className="text-[15px] font-semibold leading-tight truncate mt-0.5" style={{ color: nameColor || '#1f2937' }}>{p.title}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* My reviews — what I actually thought, not just a count */}
+            {user && (
+              <div className="cp-card rounded-[22px] p-6 mt-4 shadow-lg shadow-black/5">
+                <div className="text-[12px] font-bold uppercase tracking-wide mb-1 text-gray-400">My reviews</div>
+                <ReviewsList userId={user.id} />
+              </div>
             )}
-          </div>
+          </>
         )}
 
         {/* ===================== EDIT MODE ===================== */}
