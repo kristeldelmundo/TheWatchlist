@@ -160,6 +160,34 @@ export async function loadProfileStats(userId: string): Promise<ProfileStats> {
 }
 
 // ----------------------------------------------------------------------------
+// Reviews — a user's own past reviews, most recent first. Used to show what
+// someone actually thought of things, not just a count, on their profile.
+// ----------------------------------------------------------------------------
+
+export interface UserReview {
+  id: string
+  title: string
+  poster: string | null
+  rating: number | null
+  thoughts: string | null
+  reactions: string[] | null
+  created_at: string
+}
+
+const MAX_PROFILE_REVIEWS = 20
+
+export async function loadUserReviews(userId: string): Promise<UserReview[]> {
+  const { data, error } = await supabase
+    .from('reviews')
+    .select('id, title, poster, rating, thoughts, reactions, created_at')
+    .eq('reviewer_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(MAX_PROFILE_REVIEWS)
+  if (error || !data) return []
+  return data as UserReview[]
+}
+
+// ----------------------------------------------------------------------------
 // Usernames — for pretty share links: cinepop.live/@<username>
 // Rules (mirrored in the DB check constraint): 3-20 chars, lowercase
 // letters/digits/underscore, must start with a letter.
