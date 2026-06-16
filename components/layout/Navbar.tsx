@@ -18,11 +18,13 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { useCircle } from "@/components/auth/CircleProvider";
 import InviteBell from "@/components/layout/InviteBell";
 
+// `tourId` gives the spotlight tour (components/tour/TabTour.tsx) a stable
+// DOM hook to find and measure each nav item, independent of href/label.
 const navItems = [
-  { href: "/watchlist", label: "Library", icon: Film },
-  { href: "/trending", label: "Trending", icon: TrendingUp },
-  { href: "/randomizer", label: "Pick for us!", icon: Shuffle },
-  { href: "/review", label: "Rate & Share", icon: Star },
+  { href: "/watchlist", label: "Library", icon: Film, tourId: "tour-nav-library" },
+  { href: "/trending", label: "Trending", icon: TrendingUp, tourId: "tour-nav-trending" },
+  { href: "/randomizer", label: "Pick for us!", icon: Shuffle, tourId: "tour-nav-randomizer" },
+  { href: "/review", label: "Rate & Share", icon: Star, tourId: "tour-nav-review" },
 ];
 
 export default function Navbar() {
@@ -69,7 +71,7 @@ export default function Navbar() {
 
         {/* Circle switcher */}
         {user && activeCircle && (
-          <div className="relative" ref={circleRef}>
+          <div className="relative" ref={circleRef} id="tour-nav-circle-switcher">
             <button
               onClick={() => setCircleMenuOpen((o) => !o)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-rose-50 hover:bg-rose-100 text-sm font-medium text-rose-600 transition-colors max-w-[200px]"
@@ -115,10 +117,11 @@ export default function Navbar() {
         )}
 
         <div className="flex items-center gap-1 flex-1 justify-center overflow-x-auto">
-          {navItems.map(({ href, label, icon: Icon }) => (
+          {navItems.map(({ href, label, icon: Icon, tourId }) => (
             <Link
               key={href}
               href={href}
+              id={tourId}
               className={clsx(
                 "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all flex-shrink-0",
                 pathname === href
@@ -136,7 +139,7 @@ export default function Navbar() {
         {user ? (
           <div className="flex items-center gap-1 flex-shrink-0">
             <InviteBell />
-            <div className="relative" ref={menuRef}>
+            <div className="relative" ref={menuRef} id="tour-nav-profile-chip">
               <button
                 onClick={() => setMenuOpen((o) => !o)}
                 className="flex items-center gap-1.5 pl-1 pr-2 py-1 rounded-full hover:bg-rose-50 transition-colors"
