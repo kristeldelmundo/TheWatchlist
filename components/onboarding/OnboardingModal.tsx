@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useAuth } from '@/components/auth/AuthProvider'
 import { useCircle } from '@/components/auth/CircleProvider'
+import { useTabTour } from '@/components/auth/TabTourProvider'
 import { getCircleMembers } from '@/lib/circles'
 import { supabase } from '@/lib/supabase'
 import {
@@ -36,6 +37,7 @@ type UsernameStatus = 'idle' | 'checking' | 'available' | 'taken' | 'invalid'
 export default function OnboardingModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { user, profile, refreshProfile } = useAuth()
   const { activeCircle, loading: circlesLoading } = useCircle()
+  const { openTour } = useTabTour()
 
   const hasCircle = !circlesLoading && !!activeCircle
 
@@ -181,6 +183,7 @@ export default function OnboardingModal({ open, onClose }: { open: boolean; onCl
   async function finish() {
     if (!user || finishing) return
     setFinishing(true)
+    const wasTourSeen = profile?.tab_tour_completed ?? true
     await supabase
       .from('profiles')
       .update({ onboarding_completed: true, updated_at: new Date().toISOString() })
@@ -188,6 +191,10 @@ export default function OnboardingModal({ open, onClose }: { open: boolean; onCl
     await refreshProfile()
     setFinishing(false)
     onClose()
+    // Chain straight into the navbar spotlight tour if they haven't seen it yet.
+    if (!wasTourSeen) {
+      openTour()
+    }
   }
 
   async function next() {
