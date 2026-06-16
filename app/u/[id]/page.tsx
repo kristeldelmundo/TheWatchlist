@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase'
 import { loadProfileStats, findProfileIdentifier, type ProfileStats } from '@/lib/profile'
 import { resolveBgStyle } from '@/lib/theme'
 import ProfileCard, { type ProfileCardData } from '@/components/profile/ProfileCard'
+import ReviewsList from '@/components/profile/ReviewsList'
 import { Loader2 } from 'lucide-react'
 
 export default function PublicProfilePage() {
@@ -83,6 +84,14 @@ export default function PublicProfilePage() {
         {!loading && profile && (
           <>
             <ProfileCard profile={profile} stats={stats} />
+
+            {/* Past reviews — what they actually thought, not just a count */}
+            <div className="cp-card rounded-[22px] p-6 mt-4 shadow-lg shadow-black/5">
+              <div className="text-[12px] font-bold uppercase tracking-wide mb-1 text-gray-400">
+                {profile.display_name || 'Their'} reviews
+              </div>
+              <ReviewsList userId={profile.id} />
+            </div>
 
             {/* CTA for visitors */}
             <div className="mt-5 text-center">
