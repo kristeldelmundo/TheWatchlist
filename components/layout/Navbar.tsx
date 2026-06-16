@@ -194,7 +194,7 @@ export default function Navbar() {
                     onClick={() => setMenuOpen(false)}
                     className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:bg-rose-50 transition-colors"
                   >
-                    <Users size={14} /> Circle members
+                    <Users size={14} /> Friends
                   </Link>
                   <Link
                     href="/help"
