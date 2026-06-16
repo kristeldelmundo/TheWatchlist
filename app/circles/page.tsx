@@ -17,9 +17,8 @@ import {
   leaveCircle,
   removeCircleMember,
 } from '@/lib/circles'
-import { loadProfileStats } from '@/lib/profile'
 import {
-  Plus, Users, Check, LogIn, Loader2, Sparkles, Link2, UserPlus, Search, Pencil, X, LogOut, ChevronRight, ChevronDown, Star,
+  Plus, Users, Check, LogIn, Loader2, Sparkles, Link2, UserPlus, Search, Pencil, X, LogOut, ChevronRight, ChevronDown,
 } from 'lucide-react'
 import { clsx } from 'clsx'
 
@@ -29,19 +28,6 @@ interface Member {
   user_id: string
   role: string
   profile: { id: string; display_name: string | null; avatar_url: string | null; accent_color: string | null } | null
-}
-
-// Lightweight activity hint per friend — review count + their most common
-// reaction, so the list gives a reason to tap in rather than just naming people.
-interface MemberActivity {
-  reviews: number
-  topReaction: string | null
-}
-
-const REACTION_EMOJI: Record<string, string> = {
-  Obsessed: '😍', 'So good': '🍿', 'We cried': '😭', 'Laughed so hard': '🤣',
-  'Plot twist!': '🤯', 'Fell asleep': '😴', Meh: '😐', 'Would rewatch': '🔁',
-  'Perfect date night': '💑', "So bad it's good": '💀',
 }
 
 // A cute confirmation dialog, used for leaving / removing.
@@ -132,7 +118,6 @@ function CirclesInner() {
 
   const [memberCounts, setMemberCounts] = useState<Record<string, number>>({})
   const [members, setMembers] = useState<Member[]>([])
-  const [activity, setActivity] = useState<Record<string, MemberActivity>>({})
   const [copied, setCopied] = useState(false)
 
   // Invite by email
@@ -165,15 +150,6 @@ function CirclesInner() {
     if (!activeCircle) return
     const m = await getCircleMembers(activeCircle.id)
     setMembers(m as Member[])
-
-    // Activity hints (review counts) load in the background — don't block the list.
-    const entries = await Promise.all(
-      (m as Member[]).map(async (member) => {
-        const stats = await loadProfileStats(member.user_id)
-        return [member.user_id, { reviews: stats.reviews, topReaction: stats.topReaction }] as const
-      }),
-    )
-    setActivity(Object.fromEntries(entries))
   }, [activeCircle])
 
   useEffect(() => {
@@ -545,7 +521,6 @@ function CirclesInner() {
                         const isPurple = m.profile?.accent_color === 'purple'
                         const isMemberOwner = m.role === 'owner'
                         const isMe = m.user_id === user?.id
-                        const act = activity[m.user_id]
                         // Anyone can remove anyone except the owner. (You leave via the Leave button, not the X.)
                         const canRemove = !isMemberOwner && !isMe
                         return (
@@ -569,18 +544,7 @@ function CirclesInner() {
                               )}
                               <div className="flex-1 min-w-0">
                                 <div className="text-sm font-medium text-gray-800 truncate">{nm}{isMe ? ' (you)' : ''}</div>
-                                <div className="flex items-center gap-2 mt-0.5">
-                                  {isMemberOwner && <span className="text-[11px] text-rose-400 font-medium">owner</span>}
-                                  {act !== undefined && (
-                                    <span className="text-[11px] text-gray-400 flex items-center gap-1">
-                                      <Star size={10} className="text-amber-400" />
-                                      {act.reviews} {act.reviews === 1 ? 'review' : 'reviews'}
-                                      {act.topReaction && (
-                                        <span className="ml-0.5">{REACTION_EMOJI[act.topReaction] || ''}</span>
-                                      )}
-                                    </span>
-                                  )}
-                                </div>
+                                {isMemberOwner && <div className="text-[11px] text-rose-400 font-medium mt-0.5">owner</div>}
                               </div>
                               <ChevronRight size={16} className="text-gray-300 flex-shrink-0" />
                             </Link>
