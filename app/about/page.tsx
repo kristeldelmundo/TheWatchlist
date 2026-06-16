@@ -9,12 +9,13 @@ import {
   Coffee, Heart, Send, Loader2, Check, Globe, Github, Instagram, Sparkles,
 } from 'lucide-react'
 
-// ⬇️ PLACEHOLDERS — swap these for the real thing anytime.
+// ⬇️ Only the Ko-fi handle is still a placeholder — swap it once your account is set up.
 const KOFI_URL = 'https://ko-fi.com/yourname' // ← replace with your real Ko-fi handle
-const PORTFOLIO_URL = 'https://kristeldelmundo.vercel.app'
+const PHOTO_URL =
+  'https://lscjqfqpnquielxncybb.supabase.co/storage/v1/object/public/avatars/site/kristel.jpg'
 const SOCIALS = [
-  { label: 'Portfolio', href: PORTFOLIO_URL, icon: Globe },
-  { label: 'Instagram', href: 'https://instagram.com/yourhandle', icon: Instagram },
+  { label: 'Portfolio', href: 'https://kristeldelmundo.vercel.app', icon: Globe },
+  { label: 'Instagram', href: 'https://www.instagram.com/kristeldelmundo/', icon: Instagram },
   { label: 'GitHub', href: 'https://github.com/kristeldelmundo', icon: Github },
 ]
 
@@ -56,16 +57,19 @@ function AboutInner() {
       <main className="max-w-2xl mx-auto px-4 py-8">
         {/* Hero */}
         <div className="text-center mb-8">
-          {/* PLACEHOLDER avatar — swap the emoji for a real photo later */}
-          <div className="w-24 h-24 rounded-full mx-auto mb-4 bg-gradient-to-br from-rose-200 to-purple-200 flex items-center justify-center text-4xl shadow-lg ring-2 ring-white">
-            🎬
+          <div className="w-28 h-28 rounded-full mx-auto mb-4 overflow-hidden shadow-lg ring-2 ring-white">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={PHOTO_URL}
+              alt="Kristel"
+              className="w-full h-full object-cover"
+            />
           </div>
           <h1 className="font-display text-3xl font-bold text-gray-800 mb-2">
             Hi, I&apos;m <span className="gradient-text italic">Kristel</span> 🍿
           </h1>
           <p className="text-sm text-gray-500 max-w-md mx-auto leading-relaxed">
-            {/* PLACEHOLDER one-liner */}
-            I built CinePop so my favorite people and I could stop arguing about what to watch — and start actually watching it. 💕
+            A vibe coder with a keen eye for design — I built CinePop so my boyfriend and I could stop arguing about what to watch, and start actually watching it. 💕
           </p>
         </div>
 
@@ -75,16 +79,15 @@ function AboutInner() {
             <span className="text-xl">✨</span>
             <h2 className="font-display text-lg font-bold text-gray-800">The story</h2>
           </div>
-          {/* PLACEHOLDER story copy — replace with your real words anytime */}
           <div className="space-y-3 text-[14px] text-gray-600 leading-relaxed">
             <p>
-              CinePop started as a tiny side project: a shared watchlist for me and the people I watch movies with. No more &quot;I don&apos;t know, what do <em>you</em> want to watch?&quot; loops.
+              CinePop started as a tiny side project: a shared watchlist for me and my boyfriend, who love movies and shows but could <em>never</em> decide what to put on. No more &quot;I don&apos;t know, what do <em>you</em> want to watch?&quot; loops.
             </p>
             <p>
-              It grew into something more — circles, profiles, a randomizer when we really can&apos;t decide, and a place to remember what we loved (and what made us cry). I&apos;m still building it, one cozy feature at a time.
+              So one night I hopped on Claude and just… made it happen. It grew into something more — circles, profiles, a randomizer for when we really can&apos;t decide, and a place to remember what we loved (and what made us cry). I&apos;m still building it, one cozy feature at a time.
             </p>
             <p>
-              Thanks for being here. It means a lot. 🿿
+              Thanks for being here. It means a lot — from me, my boyfriend, and our adorable cat Theo. 🐈‍⬛
             </p>
           </div>
         </section>
@@ -96,7 +99,7 @@ function AboutInner() {
             <h2 className="font-display text-lg font-bold text-gray-800">Made by me</h2>
           </div>
           <p className="text-[14px] text-gray-600 leading-relaxed mb-4">
-            I&apos;m a creative who loves where fashion, film, and code meet. CinePop is one of my passion projects — you can find more of my work here:
+            I&apos;m a creative who loves where fashion, film, and code meet — a self-taught vibe coder figuring it out as I go. CinePop is one of my passion projects. You can find more of my work here:
           </p>
           <div className="flex flex-wrap gap-2">
             {SOCIALS.map((s) => (
@@ -120,7 +123,7 @@ function AboutInner() {
             Enjoying CinePop?
           </h2>
           <p className="text-[14px] text-gray-500 leading-relaxed max-w-sm mx-auto mb-4">
-            CinePop is free and made with love. If it&apos;s saved you from a movie-night standoff, you can fuel the next feature with a coffee. 💕
+            CinePop is free and made with love. No pressure at all — but if it&apos;s saved you from a movie-night standoff, you can support the project (and Theo&apos;s treats 🐾) with a little coffee. 💕
           </p>
           <a
             href={KOFI_URL}
@@ -128,7 +131,7 @@ function AboutInner() {
             rel="noopener noreferrer"
             className="inline-flex items-center justify-center gap-2 bg-rose-500 hover:bg-rose-600 text-white font-semibold px-6 py-3 rounded-full transition-all hover:scale-105 shadow-md shadow-rose-200"
           >
-            <Coffee size={18} /> Buy me a coffee
+            <Coffee size={18} /> Buy us a coffee
           </a>
         </section>
 
@@ -147,7 +150,7 @@ function AboutInner() {
               <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-3">
                 <Check size={22} className="text-green-600" />
               </div>
-              <p className="font-medium text-gray-800 mb-1">Thank you! 🿿</p>
+              <p className="font-medium text-gray-800 mb-1">Thank you! 🍿</p>
               <p className="text-sm text-gray-500 mb-4">Your idea landed safely in my inbox.</p>
               <button
                 onClick={() => setSent(false)}
