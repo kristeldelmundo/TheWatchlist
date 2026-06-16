@@ -3,6 +3,7 @@ import './globals.css'
 import { AuthProvider } from '@/components/auth/AuthProvider'
 import { CircleProvider } from '@/components/auth/CircleProvider'
 import { OnboardingProvider } from '@/components/auth/OnboardingProvider'
+import { TabTourProvider } from '@/components/auth/TabTourProvider'
 
 export const metadata: Metadata = {
   title: 'CinePop 🍿',
@@ -20,7 +21,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="grain min-h-screen bg-gradient-to-br from-rose-50 via-purple-50 to-sky-50">
         <AuthProvider>
           <CircleProvider>
-            <OnboardingProvider>{children}</OnboardingProvider>
+            <TabTourProvider>
+              <OnboardingProvider>{children}</OnboardingProvider>
+            </TabTourProvider>
           </CircleProvider>
         </AuthProvider>
       </body>
