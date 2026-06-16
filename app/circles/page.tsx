@@ -18,7 +18,7 @@ import {
   removeCircleMember,
 } from '@/lib/circles'
 import {
-  Plus, Users, Check, LogIn, Loader2, Sparkles, Link2, UserPlus, Search, Pencil, X, LogOut, ChevronRight,
+  Plus, Users, Check, LogIn, Loader2, Sparkles, Link2, UserPlus, Search, Pencil, X, LogOut, ChevronRight, ChevronDown,
 } from 'lucide-react'
 import { clsx } from 'clsx'
 
@@ -104,11 +104,14 @@ function CirclesInner() {
   const { user } = useAuth()
   const { circles, activeCircle, setActiveCircle, refreshCircles, loading } = useCircle()
 
+  // "Create a circle" and "Join by code" are now collapsed-by-default
+  // secondary actions, not full-width primary buttons.
   const [creating, setCreating] = useState(false)
   const [newName, setNewName] = useState('')
   const [newEmoji, setNewEmoji] = useState('🍿')
   const [busy, setBusy] = useState(false)
 
+  const [joinOpen, setJoinOpen] = useState(false)
   const [joinCode, setJoinCode] = useState('')
   const [joinMsg, setJoinMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
   const [joining, setJoining] = useState(false)
@@ -332,6 +335,7 @@ function CirclesInner() {
   }
 
   const isOwner = activeCircle?.owner_id === user?.id
+  const otherCircles = circles.filter((c) => c.id !== activeCircle?.id)
 
   return (
     <>
@@ -363,53 +367,19 @@ function CirclesInner() {
           </div>
         ) : (
           <>
-            {/* Circle list */}
-            <div className="space-y-3 mb-6">
-              {circles.map((c) => {
-                const isActive = activeCircle?.id === c.id
-                return (
-                  <button
-                    key={c.id}
-                    onClick={() => setActiveCircle(c)}
-                    className={clsx(
-                      'w-full glass rounded-2xl p-4 flex items-center gap-3 text-left transition-all',
-                      isActive
-                        ? 'ring-2 ring-rose-400 shadow-lg shadow-rose-100'
-                        : 'hover:shadow-md hover:shadow-rose-50',
-                    )}
-                  >
-                    <span className="text-3xl">{c.emoji}</span>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-gray-800">{c.name}</h3>
-                      <p className="text-xs text-gray-400 flex items-center gap-1">
-                        <Users size={11} />
-                        {memberCounts[c.id] ?? '…'}{' '}
-                        {(memberCounts[c.id] ?? 0) === 1 ? 'member' : 'members'}
-                      </p>
-                    </div>
-                    {isActive && (
-                      <span className="flex items-center gap-1 text-xs font-medium text-rose-500 bg-rose-50 px-2 py-1 rounded-full">
-                        <Check size={12} /> Active
-                      </span>
-                    )}
-                  </button>
-                )
-              })}
+            {circles.length === 0 && (
+              <div className="glass rounded-2xl p-8 text-center mb-6">
+                <Sparkles size={32} className="mx-auto mb-3 text-rose-300" />
+                <p className="text-gray-600 font-medium mb-1">No circles yet!</p>
+                <p className="text-sm text-gray-400">
+                  Create your first circle below to start building a shared watchlist.
+                </p>
+              </div>
+            )}
 
-              {circles.length === 0 && (
-                <div className="glass rounded-2xl p-8 text-center">
-                  <Sparkles size={32} className="mx-auto mb-3 text-rose-300" />
-                  <p className="text-gray-600 font-medium mb-1">No circles yet!</p>
-                  <p className="text-sm text-gray-400">
-                    Create your first circle below to start building a shared watchlist.
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* Active circle: invite + members panel */}
+            {/* Active circle: merged header + management panel (no duplicate name/emoji) */}
             {activeCircle && (
-              <div className="glass rounded-2xl p-4 mb-4">
+              <div className="glass rounded-2xl p-4 mb-3 ring-2 ring-rose-400 shadow-lg shadow-rose-100">
                 {editing ? (
                   /* Edit mode */
                   <div className="mb-1">
@@ -465,17 +435,25 @@ function CirclesInner() {
                     </div>
                   </div>
                 ) : (
-                  /* View mode */
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="text-2xl">{activeCircle.emoji}</span>
+                  /* Single merged header — identity + status, no second "Test" card below it */
+                  <div className="flex items-center gap-3 pb-3 mb-3 border-b border-rose-100/70">
+                    <span className="text-2xl flex-shrink-0">{activeCircle.emoji}</span>
                     <div className="flex-1 min-w-0">
-                      <h2 className="font-medium text-gray-800">{activeCircle.name}</h2>
-                      <p className="text-xs text-gray-400">Invite people to share this watchlist</p>
+                      <div className="flex items-center gap-2">
+                        <h2 className="font-medium text-gray-800 truncate">{activeCircle.name}</h2>
+                        <span className="flex items-center gap-1 text-[11px] font-medium text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full flex-shrink-0">
+                          <Check size={10} /> Active
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
+                        <Users size={11} />
+                        {members.length} {members.length === 1 ? 'member' : 'members'}
+                      </p>
                     </div>
                     {isOwner && (
                       <button
                         onClick={startEditing}
-                        className="flex items-center gap-1 text-xs text-gray-400 hover:text-rose-500 bg-white/60 hover:bg-rose-50 px-2.5 py-1.5 rounded-full transition-all"
+                        className="flex items-center gap-1 text-xs text-gray-400 hover:text-rose-500 bg-white/60 hover:bg-rose-50 px-2.5 py-1.5 rounded-full transition-all flex-shrink-0"
                         title="Edit circle name & emoji"
                       >
                         <Pencil size={12} /> Edit
@@ -624,97 +602,129 @@ function CirclesInner() {
               </div>
             )}
 
-            {/* Create a circle */}
-            {creating ? (
-              <div className="glass rounded-2xl p-4 mb-4">
-                <label className="block text-xs font-medium text-gray-500 mb-2 uppercase tracking-wide">
-                  New circle name
-                </label>
-                <input
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  placeholder="e.g. Movie Squad, Family Nights"
-                  className="w-full bg-white/80 border border-rose-100 rounded-xl px-3 py-2.5 text-sm mb-3 outline-none focus:border-rose-300"
-                />
-                <label className="block text-xs font-medium text-gray-500 mb-2 uppercase tracking-wide">
-                  Pick an emoji
-                </label>
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {EMOJI_CHOICES.map((e) => (
-                    <button
-                      key={e}
-                      onClick={() => setNewEmoji(e)}
-                      className={clsx(
-                        'w-10 h-10 rounded-xl text-xl transition-all',
-                        newEmoji === e
-                          ? 'bg-rose-100 ring-2 ring-rose-400 scale-110'
-                          : 'bg-white/60 hover:bg-rose-50',
-                      )}
-                    >
-                      {e}
-                    </button>
-                  ))}
-                </div>
-                <div className="flex gap-2">
+            {/* Other circles — plain list items, tap to switch */}
+            {otherCircles.length > 0 && (
+              <div className="space-y-2 mb-6">
+                {otherCircles.map((c) => (
                   <button
-                    onClick={handleCreate}
-                    disabled={!newName.trim() || busy}
-                    className="flex-1 flex items-center justify-center gap-2 bg-rose-500 hover:bg-rose-600 disabled:bg-rose-300 text-white font-medium py-2.5 rounded-xl text-sm transition-all"
+                    key={c.id}
+                    onClick={() => setActiveCircle(c)}
+                    className="w-full glass rounded-2xl p-4 flex items-center gap-3 text-left transition-all hover:shadow-md hover:shadow-rose-50"
                   >
-                    {busy ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
-                    Create circle
+                    <span className="text-3xl">{c.emoji}</span>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium text-gray-800">{c.name}</h3>
+                      <p className="text-xs text-gray-400 flex items-center gap-1">
+                        <Users size={11} />
+                        {memberCounts[c.id] ?? '…'}{' '}
+                        {(memberCounts[c.id] ?? 0) === 1 ? 'member' : 'members'}
+                      </p>
+                    </div>
                   </button>
-                  <button
-                    onClick={() => setCreating(false)}
-                    className="px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:bg-gray-100 transition-all"
-                  >
-                    Cancel
-                  </button>
-                </div>
+                ))}
               </div>
-            ) : (
-              <button
-                onClick={() => setCreating(true)}
-                className="w-full flex items-center justify-center gap-2 bg-rose-500 hover:bg-rose-600 text-white font-medium py-3 rounded-2xl text-sm transition-all mb-4"
-              >
-                <Plus size={18} /> Create a new circle
-              </button>
             )}
 
-            {/* Join by code */}
-            <div className="glass rounded-2xl p-4">
-              <label className="block text-xs font-medium text-gray-500 mb-2 uppercase tracking-wide">
-                Join a circle with an invite code
-              </label>
-              <div className="flex gap-2">
-                <input
-                  value={joinCode}
-                  onChange={(e) => setJoinCode(e.target.value)}
-                  placeholder="Paste the invite code or link..."
-                  className="flex-1 bg-white/80 border border-rose-100 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-rose-300"
-                />
+            {/* Secondary actions — collapsed by default so they don't compete with active-circle management */}
+            <div className="space-y-2">
+              {/* Create a circle */}
+              <div className="glass rounded-2xl overflow-hidden">
                 <button
-                  onClick={handleJoin}
-                  disabled={!joinCode.trim() || joining}
-                  className="flex items-center gap-1.5 bg-purple-500 hover:bg-purple-600 disabled:bg-purple-300 text-white font-medium px-4 rounded-xl text-sm transition-all"
+                  onClick={() => setCreating((o) => !o)}
+                  className="w-full flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium text-gray-600 hover:text-rose-500 transition-colors"
                 >
-                  {joining ? <Loader2 size={15} className="animate-spin" /> : <LogIn size={15} />}
-                  Join
+                  <span className="flex items-center gap-2">
+                    <Plus size={16} /> Create another circle
+                  </span>
+                  <ChevronDown size={14} className={clsx('text-gray-400 transition-transform', creating && 'rotate-180')} />
                 </button>
+                {creating && (
+                  <div className="px-4 pb-4">
+                    <label className="block text-xs font-medium text-gray-500 mb-2 uppercase tracking-wide">
+                      New circle name
+                    </label>
+                    <input
+                      value={newName}
+                      onChange={(e) => setNewName(e.target.value)}
+                      placeholder="e.g. Movie Squad, Family Nights"
+                      className="w-full bg-white/80 border border-rose-100 rounded-xl px-3 py-2.5 text-sm mb-3 outline-none focus:border-rose-300"
+                    />
+                    <label className="block text-xs font-medium text-gray-500 mb-2 uppercase tracking-wide">
+                      Pick an emoji
+                    </label>
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      {EMOJI_CHOICES.map((e) => (
+                        <button
+                          key={e}
+                          onClick={() => setNewEmoji(e)}
+                          className={clsx(
+                            'w-10 h-10 rounded-xl text-xl transition-all',
+                            newEmoji === e
+                              ? 'bg-rose-100 ring-2 ring-rose-400 scale-110'
+                              : 'bg-white/60 hover:bg-rose-50',
+                          )}
+                        >
+                          {e}
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      onClick={handleCreate}
+                      disabled={!newName.trim() || busy}
+                      className="w-full flex items-center justify-center gap-2 bg-rose-500 hover:bg-rose-600 disabled:bg-rose-300 text-white font-medium py-2.5 rounded-xl text-sm transition-all"
+                    >
+                      {busy ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
+                      Create circle
+                    </button>
+                  </div>
+                )}
               </div>
-              <p className="text-[11px] text-gray-300 mt-2">
-                You can paste the whole invite link — we&apos;ll find the code for you. 🍿
-              </p>
-              {joinMsg && (
-                <p
-                  className={clsx(
-                    'text-xs mt-2 px-3 py-2 rounded-lg',
-                    joinMsg.kind === 'ok' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-500',
-                  )}
+
+              {/* Join by code */}
+              <div className="glass rounded-2xl overflow-hidden">
+                <button
+                  onClick={() => setJoinOpen((o) => !o)}
+                  className="w-full flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium text-gray-600 hover:text-rose-500 transition-colors"
                 >
-                  {joinMsg.text}
-                </p>
-              )}
+                  <span className="flex items-center gap-2">
+                    <LogIn size={16} /> Have an invite code?
+                  </span>
+                  <ChevronDown size={14} className={clsx('text-gray-400 transition-transform', joinOpen && 'rotate-180')} />
+                </button>
+                {joinOpen && (
+                  <div className="px-4 pb-4">
+                    <div className="flex gap-2">
+                      <input
+                        value={joinCode}
+                        onChange={(e) => setJoinCode(e.target.value)}
+                        placeholder="Paste the invite code or link..."
+                        className="flex-1 bg-white/80 border border-rose-100 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-rose-300"
+                      />
+                      <button
+                        onClick={handleJoin}
+                        disabled={!joinCode.trim() || joining}
+                        className="flex items-center gap-1.5 bg-purple-500 hover:bg-purple-600 disabled:bg-purple-300 text-white font-medium px-4 rounded-xl text-sm transition-all"
+                      >
+                        {joining ? <Loader2 size={15} className="animate-spin" /> : <LogIn size={15} />}
+                        Join
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-gray-300 mt-2">
+                      You can paste the whole invite link — we&apos;ll find the code for you. 🍿
+                    </p>
+                    {joinMsg && (
+                      <p
+                        className={clsx(
+                          'text-xs mt-2 px-3 py-2 rounded-lg',
+                          joinMsg.kind === 'ok' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-500',
+                        )}
+                      >
+                        {joinMsg.text}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </>
         )}
