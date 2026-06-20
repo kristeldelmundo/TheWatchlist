@@ -20,8 +20,6 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { useCircle } from "@/components/auth/CircleProvider";
 import InviteBell from "@/components/layout/InviteBell";
 
-// `tourId` gives the spotlight tour (components/tour/TabTour.tsx) a stable
-// DOM hook to find and measure each nav item, independent of href/label.
 const navItems = [
   { href: "/watchlist", label: "Library", icon: Film, tourId: "tour-nav-library" },
   { href: "/trending", label: "Trending", icon: TrendingUp, tourId: "tour-nav-trending" },
@@ -189,6 +187,13 @@ export default function Navbar() {
                     className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:bg-rose-50 transition-colors"
                   >
                     <Users size={14} /> My Circles
+                  </Link>
+                  <Link
+                    href="/circles/members"
+                    onClick={() => setMenuOpen(false)}
+                    className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:bg-rose-50 transition-colors"
+                  >
+                    <Users size={14} /> Circle members
                   </Link>
                   <Link
                     href="/help"
