@@ -30,6 +30,7 @@ const SUBTITLES = [
 interface MemberLite {
   user_id: string;
   name: string;
+  avatar_url: string | null;
 }
 
 function WatchlistInner() {
@@ -71,6 +72,7 @@ function WatchlistInner() {
       m.map((x) => ({
         user_id: x.user_id,
         name: x.profile?.display_name || "Member",
+        avatar_url: x.profile?.avatar_url ?? null,
       })),
     );
   }, [activeCircle]);
@@ -164,6 +166,15 @@ function WatchlistInner() {
   const tvShows = filtered.filter((i) => i.type === "tv");
   const toWatchCount = items.filter((i) => !i.watched).length;
 
+  // Map of user_id -> avatar_url for the poster dot.
+  const avatarMap: Record<string, string | null> = Object.fromEntries(
+    members.map((m) => [m.user_id, m.avatar_url]),
+  );
+  // Also include the signed-in user's own avatar so their own adds show a photo.
+  if (user && profile?.avatar_url) {
+    avatarMap[user.id] = profile.avatar_url;
+  }
+
   // Base filters + one per circle member
   const baseFilters: { value: string; label: string }[] = [
     { value: "all", label: "All" },
@@ -221,7 +232,7 @@ function WatchlistInner() {
         </div>
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
           {list.map((item) => (
-            <MoviePoster key={item.id} item={item} onOpen={setOpenItem} />
+            <MoviePoster key={item.id} item={item} onOpen={setOpenItem} avatarMap={avatarMap} />
           ))}
         </div>
       </section>
