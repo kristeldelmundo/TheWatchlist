@@ -61,24 +61,26 @@ export default function Navbar() {
 
   return (
     <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-rose-100">
-      <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between gap-2">
-        <Link href="/" className="flex items-center gap-2 group flex-shrink-0">
+      <div className="max-w-4xl mx-auto px-3 sm:px-4 py-2.5 sm:py-3 flex items-center justify-between gap-1.5 sm:gap-2">
+
+        {/* Logo */}
+        <Link href="/" className="flex items-center gap-1.5 group flex-shrink-0" id="tour-nav-logo">
           <span className="text-xl">🍿</span>
           <span className="font-display text-lg font-medium text-rose-600 italic group-hover:text-rose-700 transition-colors hidden sm:inline">
             CinePop
           </span>
         </Link>
 
-        {/* Circle switcher */}
+        {/* Circle switcher — emoji only on mobile, full name on sm+ */}
         {user && activeCircle && (
-          <div className="relative" ref={circleRef} id="tour-nav-circle-switcher">
+          <div className="relative flex-shrink-0" ref={circleRef} id="tour-nav-circle-switcher">
             <button
               onClick={() => setCircleMenuOpen((o) => !o)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-rose-50 hover:bg-rose-100 text-sm font-medium text-rose-600 transition-colors max-w-[200px]"
+              className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-full bg-rose-50 hover:bg-rose-100 text-sm font-medium text-rose-600 transition-colors"
             >
-              <span>{activeCircle.emoji}</span>
-              <span className="truncate">{activeCircle.name}</span>
-              <ChevronDown size={12} className="flex-shrink-0" />
+              <span className="text-base">{activeCircle.emoji}</span>
+              <span className="hidden sm:inline truncate max-w-[120px]">{activeCircle.name}</span>
+              <ChevronDown size={11} className="flex-shrink-0" />
             </button>
 
             {circleMenuOpen && (
@@ -89,15 +91,10 @@ export default function Navbar() {
                 {circles.map((c) => (
                   <button
                     key={c.id}
-                    onClick={() => {
-                      setActiveCircle(c);
-                      setCircleMenuOpen(false);
-                    }}
+                    onClick={() => { setActiveCircle(c); setCircleMenuOpen(false); }}
                     className={clsx(
                       "w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors text-left",
-                      activeCircle.id === c.id
-                        ? "bg-rose-50 text-rose-600 font-medium"
-                        : "text-gray-600 hover:bg-rose-50",
+                      activeCircle.id === c.id ? "bg-rose-50 text-rose-600 font-medium" : "text-gray-600 hover:bg-rose-50",
                     )}
                   >
                     <span>{c.emoji}</span>
@@ -116,96 +113,74 @@ export default function Navbar() {
           </div>
         )}
 
-        <div className="flex items-center gap-1 flex-1 justify-center overflow-x-auto">
+        {/* Nav tabs — icons only on mobile, icons + labels on md+ */}
+        <div className="flex items-center gap-0.5 sm:gap-1 flex-1 justify-center">
           {navItems.map(({ href, label, icon: Icon, tourId }) => (
             <Link
               key={href}
               href={href}
               id={tourId}
               className={clsx(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all flex-shrink-0",
+                "flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all flex-shrink-0",
                 pathname === href
                   ? "bg-rose-500 text-white shadow-sm shadow-rose-200"
                   : "text-gray-500 hover:bg-rose-50 hover:text-rose-500",
               )}
             >
-              <Icon size={14} />
-              <span className="hidden md:inline">{label}</span>
+              <Icon size={15} />
+              <span className="hidden lg:inline">{label}</span>
             </Link>
           ))}
         </div>
 
-        {/* Invite notifications + profile chip */}
+        {/* Right: bell + profile */}
         {user ? (
-          <div className="flex items-center gap-1 flex-shrink-0">
+          <div className="flex items-center gap-0.5 sm:gap-1 flex-shrink-0">
             <InviteBell />
             <div className="relative" ref={menuRef} id="tour-nav-profile-chip">
               <button
                 onClick={() => setMenuOpen((o) => !o)}
-                className="flex items-center gap-1.5 pl-1 pr-2 py-1 rounded-full hover:bg-rose-50 transition-colors"
+                className="flex items-center gap-1 pl-1 pr-1.5 py-1 rounded-full hover:bg-rose-50 transition-colors"
               >
                 {profile?.avatar_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={profile.avatar_url}
                     alt={name}
-                    className="w-6 h-6 rounded-full object-cover"
+                    className="w-7 h-7 rounded-full object-cover"
                   />
                 ) : (
                   <span
                     className={clsx(
-                      "w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold",
-                      accent === "purple"
-                        ? "bg-purple-100 text-purple-500"
-                        : "bg-rose-100 text-rose-500",
+                      "w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold",
+                      accent === "purple" ? "bg-purple-100 text-purple-500" : "bg-rose-100 text-rose-500",
                     )}
                   >
                     {initial}
                   </span>
                 )}
-                <ChevronDown size={12} className="text-gray-400" />
+                <ChevronDown size={11} className="text-gray-400" />
               </button>
 
               {menuOpen && (
                 <div className="absolute right-0 mt-2 w-44 bg-white rounded-xl border border-rose-100 shadow-xl shadow-rose-100/50 overflow-hidden">
                   <div className="px-3 py-2 border-b border-rose-50">
-                    <p className="text-sm font-medium text-gray-800 truncate">
-                      {name}
-                    </p>
+                    <p className="text-sm font-medium text-gray-800 truncate">{name}</p>
                     <p className="text-xs text-gray-400 truncate">{user.email}</p>
                   </div>
-                  <Link
-                    href="/profile"
-                    onClick={() => setMenuOpen(false)}
-                    className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:bg-rose-50 transition-colors"
-                  >
+                  <Link href="/profile" onClick={() => setMenuOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:bg-rose-50 transition-colors">
                     <UserIcon size={14} /> My Profile
                   </Link>
-                  <Link
-                    href="/circles"
-                    onClick={() => setMenuOpen(false)}
-                    className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:bg-rose-50 transition-colors"
-                  >
+                  <Link href="/circles" onClick={() => setMenuOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:bg-rose-50 transition-colors">
                     <Users size={14} /> My Circles
                   </Link>
-                  <Link
-                    href="/help"
-                    onClick={() => setMenuOpen(false)}
-                    className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:bg-rose-50 transition-colors"
-                  >
+                  <Link href="/help" onClick={() => setMenuOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:bg-rose-50 transition-colors">
                     <HelpCircle size={14} /> Help
                   </Link>
-                  <Link
-                    href="/about"
-                    onClick={() => setMenuOpen(false)}
-                    className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:bg-rose-50 transition-colors"
-                  >
+                  <Link href="/about" onClick={() => setMenuOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:bg-rose-50 transition-colors">
                     <Info size={14} /> About
                   </Link>
-                  <button
-                    onClick={handleSignOut}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors"
-                  >
+                  <button onClick={handleSignOut} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors">
                     <LogOut size={14} /> Log out
                   </button>
                 </div>
@@ -213,10 +188,7 @@ export default function Navbar() {
             </div>
           </div>
         ) : (
-          <Link
-            href="/login"
-            className="text-sm font-medium text-rose-500 hover:text-rose-600 flex-shrink-0"
-          >
+          <Link href="/login" className="text-sm font-medium text-rose-500 hover:text-rose-600 flex-shrink-0">
             Log in
           </Link>
         )}
