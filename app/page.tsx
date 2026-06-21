@@ -101,20 +101,26 @@ export default function HomePage() {
 
       {/* ── SLIDE AREA ──────────────────────────────────────────────── */}
       <div className="flex-1 relative overflow-hidden">
-        <div className={clsx('absolute inset-0 flex flex-col items-center justify-center text-center px-5 sm:px-8', animating ? 'slide-out' : 'slide-in')}>
+        {/* On mobile: vertically centered. On desktop: shifted up with pt */}
+        <div className={clsx(
+          'absolute inset-0 flex flex-col items-center text-center px-5 sm:px-8',
+          'justify-center sm:justify-start sm:pt-16',
+          animating ? 'slide-out' : 'slide-in'
+        )}>
 
           {/* ── SLIDE 1: HERO ── */}
           {cur === 0 && (
             <>
-              <div className="pop d1 inline-flex items-center gap-1.5 bg-white/60 border border-rose-200 rounded-full px-3 sm:px-4 py-1 sm:py-1.5 text-xs sm:text-sm text-rose-500 mb-4 sm:mb-6 font-medium">
+              <div className="pop d1 inline-flex items-center gap-1.5 bg-white/60 border border-rose-200 rounded-full px-3 sm:px-4 py-1 sm:py-1.5 text-xs sm:text-sm text-rose-500 mb-4 sm:mb-5 font-medium">
                 <Heart size={11} fill="currentColor" /> your shared movie night app
               </div>
               <h1 className="pop d2 font-display font-bold text-gray-800 leading-tight mb-3 sm:mb-4" style={{ fontSize: 'clamp(32px,8vw,86px)' }}>
                 <span className="gradient-text italic">CinePop</span>{' '}
                 <span className="not-italic" style={{ WebkitTextFillColor: 'initial' }}>🍿</span>
               </h1>
-              <p className="pop d3 text-sm sm:text-lg text-rose-400 font-medium italic mb-2 sm:mb-3">Pop something on tonight 🍿</p>
-              <p className="pop d4 text-sm sm:text-xl text-gray-500 max-w-xs sm:max-w-lg leading-relaxed mb-6 sm:mb-10">
+              <p className="pop d3 text-sm sm:text-base text-rose-400 font-medium italic mb-2 sm:mb-3">Pop something on tonight 🍿</p>
+              {/* Gray body text — smaller on desktop too */}
+              <p className="pop d4 text-sm text-gray-500 max-w-xs sm:max-w-md leading-relaxed mb-6 sm:mb-8">
                 Add movies and shows, let fate decide what you watch, then rate and share the experience together.
               </p>
               <div className="pop d5 flex flex-col sm:flex-row gap-2 sm:gap-3 w-full max-w-xs sm:max-w-none sm:w-auto">
@@ -126,7 +132,7 @@ export default function HomePage() {
                 </Link>
               </div>
               {!user && (
-                <p className="pop mt-4 sm:mt-5 text-xs text-gray-400">Free forever · No ads · Made with 💕</p>
+                <p className="pop mt-4 text-xs text-gray-400">Free forever · No ads · Made with 💕</p>
               )}
             </>
           )}
@@ -136,7 +142,7 @@ export default function HomePage() {
             <>
               <div className="pop d1 text-rose-400 text-[10px] sm:text-xs font-bold uppercase tracking-widest mb-1 sm:mb-2">How it works</div>
               <h2 className="pop d2 font-display text-2xl sm:text-4xl font-bold text-gray-800 mb-1 sm:mb-2">Movie nights, upgraded ✨</h2>
-              <p className="pop d3 text-xs sm:text-base text-gray-400 max-w-xs sm:max-w-sm mb-4 sm:mb-8">Everything you need for a perfect watch night, built in.</p>
+              <p className="pop d3 text-xs sm:text-sm text-gray-400 max-w-xs sm:max-w-sm mb-4 sm:mb-8">Everything you need for a perfect watch night, built in.</p>
               <div className="pop d4 grid grid-cols-3 gap-2 sm:gap-5 max-w-xs sm:max-w-2xl w-full">
                 {[
                   { emoji: '🍿', step: '01', title: 'Create a circle', desc: 'Invite your people. Everyone adds to one shared watchlist.' },
@@ -171,10 +177,10 @@ export default function HomePage() {
                 </div>
               </div>
               <h2 className="pop d2 font-display text-lg sm:text-3xl font-bold text-gray-800 mb-2 sm:mb-3">Made with love, not VC money 💕</h2>
-              <p className="pop d3 text-xs sm:text-base text-gray-500 max-w-xs sm:max-w-lg leading-relaxed mb-1 sm:mb-2">
+              <p className="pop d3 text-xs sm:text-sm text-gray-500 max-w-xs sm:max-w-lg leading-relaxed mb-1 sm:mb-2">
                 CinePop was built by Kristel for her boyfriend and herself so they&apos;d never argue about what to watch again. Free, ad-free, one cozy feature at a time.
               </p>
-              <p className="pop d3 text-xs sm:text-base text-gray-400 max-w-xs sm:max-w-sm leading-relaxed mb-5 sm:mb-8">
+              <p className="pop d3 text-xs sm:text-sm text-gray-400 max-w-xs sm:max-w-sm leading-relaxed mb-5 sm:mb-8">
                 Oh, and Theo (the kitten) supervised the whole thing. 🐈‍⬛
               </p>
               <div className="pop d4 flex flex-col sm:flex-row gap-2 sm:gap-3 items-center justify-center w-full max-w-xs sm:max-w-none sm:w-auto">
@@ -199,18 +205,10 @@ export default function HomePage() {
         </div>
 
         {/* Arrows */}
-        <button
-          onClick={() => go(-1)}
-          className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-rose-400 hover:text-rose-600 transition-all hover:scale-110 bg-white/70 border border-rose-100 shadow-sm"
-          aria-label="Previous"
-        >
+        <button onClick={() => go(-1)} className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-rose-400 hover:text-rose-600 transition-all hover:scale-110 bg-white/70 border border-rose-100 shadow-sm" aria-label="Previous">
           <ChevronLeft size={16} />
         </button>
-        <button
-          onClick={() => go(1)}
-          className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-rose-400 hover:text-rose-600 transition-all hover:scale-110 bg-white/70 border border-rose-100 shadow-sm"
-          aria-label="Next"
-        >
+        <button onClick={() => go(1)} className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-rose-400 hover:text-rose-600 transition-all hover:scale-110 bg-white/70 border border-rose-100 shadow-sm" aria-label="Next">
           <ChevronRight size={16} />
         </button>
 
