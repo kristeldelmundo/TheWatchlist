@@ -6,7 +6,7 @@ import Navbar from '@/components/layout/Navbar'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/components/auth/AuthProvider'
 import {
-  Coffee, Heart, Send, Loader2, Check, Globe, Github, Instagram, Sparkles,
+  Coffee, Heart, Send, Loader2, Check, Globe, Github, Instagram, Sparkles, X,
 } from 'lucide-react'
 
 const KOFI_URL = 'https://ko-fi.com/kristeldelmundo'
@@ -20,8 +20,46 @@ const SOCIALS = [
   { label: 'GitHub', href: 'https://github.com/kristeldelmundo', icon: Github },
 ]
 
+interface LightboxProps {
+  src: string
+  alt: string
+  caption: string
+  onClose: () => void
+}
+
+function Lightbox({ src, alt, caption, onClose }: LightboxProps) {
+  return (
+    <div
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm px-4"
+      onClick={onClose}
+    >
+      <div
+        className="relative max-w-sm w-full"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          onClick={onClose}
+          className="absolute -top-3 -right-3 z-10 w-8 h-8 rounded-full bg-white shadow-lg flex items-center justify-center text-gray-500 hover:text-rose-500 transition-colors"
+          aria-label="Close"
+        >
+          <X size={16} />
+        </button>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={src}
+          alt={alt}
+          className="w-full rounded-3xl shadow-2xl shadow-black/40 object-cover"
+        />
+        <p className="text-center text-white/80 text-sm mt-3 font-medium">{caption}</p>
+      </div>
+    </div>
+  )
+}
+
 function AboutInner() {
   const { user } = useAuth()
+
+  const [lightbox, setLightbox] = useState<{ src: string; alt: string; caption: string } | null>(null)
 
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -68,24 +106,41 @@ function AboutInner() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-rose-50 via-purple-50 to-sky-50">
+      {lightbox && (
+        <Lightbox
+          src={lightbox.src}
+          alt={lightbox.alt}
+          caption={lightbox.caption}
+          onClose={() => setLightbox(null)}
+        />
+      )}
+
       <Navbar />
       <main className="max-w-2xl mx-auto px-4 py-8">
         {/* Hero */}
         <div className="text-center mb-8">
-          {/* Kristel + Theo side by side */}
+          {/* Kristel + Theo side by side — tap to expand */}
           <div className="flex items-end justify-center gap-4 mb-4">
             <div className="flex flex-col items-center gap-1.5">
-              <div className="w-28 h-28 rounded-full overflow-hidden shadow-lg ring-2 ring-white">
+              <button
+                onClick={() => setLightbox({ src: PHOTO_URL, alt: 'Kristel', caption: 'Kristel 👩‍💻 — the builder behind CinePop 🍿' })}
+                className="w-28 h-28 rounded-full overflow-hidden shadow-lg ring-2 ring-white hover:ring-rose-300 hover:scale-105 transition-all cursor-zoom-in"
+                title="Tap to view"
+              >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={PHOTO_URL} alt="Kristel" className="w-full h-full object-cover" />
-              </div>
+              </button>
               <span className="text-[11px] text-gray-400 font-medium">Kristel 👩‍💻</span>
             </div>
             <div className="flex flex-col items-center gap-1.5 mb-1">
-              <div className="w-20 h-20 rounded-full overflow-hidden shadow-lg ring-2 ring-rose-100">
+              <button
+                onClick={() => setLightbox({ src: THEO_URL, alt: 'Theo the cat', caption: 'Theo 🐾 — CinePop\'s chief nap officer' })}
+                className="w-20 h-20 rounded-full overflow-hidden shadow-lg ring-2 ring-rose-100 hover:ring-rose-300 hover:scale-105 transition-all cursor-zoom-in"
+                title="Tap to view"
+              >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={THEO_URL} alt="Theo the cat" className="w-full h-full object-cover" />
-              </div>
+              </button>
               <span className="text-[11px] text-gray-400 font-medium">Theo 🐾</span>
             </div>
           </div>
