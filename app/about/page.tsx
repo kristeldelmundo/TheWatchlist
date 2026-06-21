@@ -30,14 +30,14 @@ function AboutInner() {
 
   async function submitSuggestion(e: React.FormEvent) {
     e.preventDefault()
-    if (!message.trim() || sending) return
+    if (!message.trim() || !email.trim() || sending) return
     setSending(true)
     setError(null)
 
     const payload = {
       message: message.trim(),
       name: name.trim() || null,
-      email: email.trim() || null,
+      email: email.trim(),
     }
 
     // 1) Save to the suggestions table (the durable record / backup).
@@ -52,12 +52,11 @@ function AboutInner() {
       return
     }
 
-    // 2) Fire the email notification (fire-and-forget — a mail hiccup should
-    //    never block a successfully-saved suggestion).
+    // 2) Fire the email notification + auto-reply via Resend.
     try {
       await supabase.functions.invoke('notify-suggestion', { body: payload })
     } catch {
-      // ignore — it's already saved in the table
+      // ignore — suggestion is already saved in the table
     }
 
     setSending(false)
@@ -158,7 +157,7 @@ function AboutInner() {
             <h2 className="font-display text-lg font-bold text-gray-800">Suggestion box</h2>
           </div>
           <p className="text-[13px] text-gray-500 leading-relaxed mb-4">
-            Got an idea, a bug, or a feature you&apos;d love? Tell me — I read every one.
+            Got an idea, a bug, or a feature you&apos;d love? Tell me — I read every one. Drop your email and I&apos;ll write back personally. 💌
           </p>
 
           {sent ? (
@@ -167,7 +166,7 @@ function AboutInner() {
                 <Check size={22} className="text-green-600" />
               </div>
               <p className="font-medium text-gray-800 mb-1">Thank you! 🍿</p>
-              <p className="text-sm text-gray-500 mb-4">Your idea landed safely in my inbox.</p>
+              <p className="text-sm text-gray-500 mb-4">Your idea landed safely in my inbox — check your email for a note back from me. 💕</p>
               <button
                 onClick={() => setSent(false)}
                 className="text-sm text-rose-500 hover:text-rose-600 font-medium"
@@ -188,7 +187,8 @@ function AboutInner() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   type="email"
-                  placeholder="Email (optional)"
+                  placeholder="Your email *"
+                  required
                   className="flex-1 bg-white/90 border border-rose-100 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-rose-300"
                 />
               </div>
@@ -197,17 +197,19 @@ function AboutInner() {
                 onChange={(e) => setMessage(e.target.value)}
                 rows={4}
                 placeholder="What's on your mind? ✨"
+                required
                 className="w-full bg-white/90 border border-rose-100 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-rose-300 resize-none"
               />
               {error && <p className="text-xs text-red-500 px-1">{error}</p>}
               <button
                 type="submit"
-                disabled={!message.trim() || sending}
+                disabled={!message.trim() || !email.trim() || sending}
                 className="w-full flex items-center justify-center gap-2 bg-rose-500 hover:bg-rose-600 disabled:bg-rose-300 text-white font-medium py-3 rounded-xl text-sm transition-all"
               >
                 {sending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
                 {sending ? 'Sending…' : 'Send suggestion'}
               </button>
+              <p className="text-[11px] text-gray-400 text-center">* Required so I can write back to you 💌</p>
             </form>
           )}
         </section>
