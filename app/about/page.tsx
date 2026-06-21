@@ -119,7 +119,6 @@ function AboutInner() {
       <main className="max-w-2xl mx-auto px-4 py-8">
         {/* Hero */}
         <div className="text-center mb-8">
-          {/* Kristel + Theo side by side — tap to expand */}
           <div className="flex items-end justify-center gap-4 mb-4">
             <div className="flex flex-col items-center gap-1.5">
               <button
@@ -241,7 +240,8 @@ function AboutInner() {
             </div>
           ) : (
             <form onSubmit={submitSuggestion} className="space-y-3">
-              <div className="flex gap-2">
+              {/* Stacked on mobile, side by side on sm+ */}
+              <div className="flex flex-col sm:flex-row gap-2">
                 <input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
