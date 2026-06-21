@@ -20,9 +20,6 @@ const TabTourContext = createContext<TabTourContextValue>({
   closeTour: () => {},
 })
 
-// Steps are written as actionable how-tos (not just "what is this tab") so
-// the tour also teaches the core flows: creating a circle, inviting people,
-// adding a movie, and using the randomizer — not just naming each tab.
 const BASE_STEPS: TabTourStep[] = [
   {
     targetId: 'tour-nav-library',
@@ -46,21 +43,24 @@ const BASE_STEPS: TabTourStep[] = [
   },
   {
     targetId: 'tour-nav-profile-chip',
-    title: '✨ Your profile',
-    body: 'Edit your profile, grab your share link (cinepop.live/@you), switch circles, or sign out — all from here.',
+    title: '✨ Your profile & more',
+    body: 'Edit your profile, grab your share link, switch circles, or sign out — all from here. You\'ll also find Help and About, where you can read Kristel\'s story and leave a suggestion. 💕',
+  },
+  {
+    targetId: 'tour-nav-profile-chip',
+    title: '🍿 A note from Kristel',
+    body: 'CinePop was built by Kristel — a developer who made this for her boyfriend and herself, so they\'d never argue about what to watch again. It\'s made with a lot of love, one cozy feature at a time. We\'re so glad you\'re here. 💌',
   },
 ]
 
-// Shown instead of the circle switcher when the user has no circle yet —
-// teaches circle creation since that's the very first thing they need to do.
+// Shown instead of the circle switcher when the user has no circle yet.
 const NO_CIRCLE_STEP: TabTourStep = {
   targetId: 'tour-nav-library',
   title: '🍿 Create your first circle',
   body: 'Circles are shared movie groups — you and a partner, family, or friends. Head to "My Circles" from your profile chip, tap "Create a new circle," name it, and you\'re ready to add movies together.',
 }
 
-// Shown instead when the user already has one — teaches inviting more
-// people in, since that's the natural next step once a circle exists.
+// Shown instead when the user already has one.
 const HAS_CIRCLE_STEP: TabTourStep = {
   targetId: 'tour-nav-circle-switcher',
   title: '🍿 Circle switcher',
@@ -85,8 +85,6 @@ export function TabTourProvider({ children }: { children: ReactNode }) {
     }
   }, [user, refreshProfile])
 
-  // Lead with circle guidance (create or invite, depending on whether they
-  // have one), then walk the rest of the navbar.
   const leadStep = activeCircle ? HAS_CIRCLE_STEP : NO_CIRCLE_STEP
   const steps: TabTourStep[] = [leadStep, ...BASE_STEPS]
 
