@@ -66,8 +66,9 @@ function plexUrl(title: string) {
 function crackleUrl(title: string) {
   return `https://www.crackle.com/search?term=${encodeURIComponent(title)}`;
 }
-function popcornflixUrl(title: string) {
-  return `https://www.popcornflix.com/search?term=${encodeURIComponent(title)}`;
+// Viu — works in PH, great for K-drama and Asian content
+function viuUrl(title: string) {
+  return `https://www.viu.com/ott/ph/en-us/search?q=${encodeURIComponent(title)}`;
 }
 
 function RandomizerInner() {
@@ -354,12 +355,12 @@ function RandomizerInner() {
                     <Film size={12} /> Crackle
                   </a>
                   <a
-                    href={popcornflixUrl(pick.title)}
+                    href={viuUrl(pick.title)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-[#e91e63] hover:bg-[#c2185b] text-white transition-all hover:scale-105"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-[#00c853] hover:bg-[#00a844] text-white transition-all hover:scale-105"
                   >
-                    🍿 Popcornflix
+                    <Tv size={12} /> Viu 🇵🇭
                   </a>
                 </div>
                 <p className="text-[10px] text-gray-300 mt-2">
