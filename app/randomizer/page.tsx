@@ -16,6 +16,7 @@ import {
   Film,
   Tv,
   Play,
+  Tv2,
 } from "lucide-react";
 import { clsx } from "clsx";
 import Popcorn from "@/components/ui/Popcorn";
@@ -39,7 +40,6 @@ const KERNELS = [
   { x: "20px", delay: "0.75s", size: 38 },
 ];
 
-// Emoji confetti that rains down when a pick lands.
 const CONFETTI = ["🍿", "🎬", "✨", "🎉", "⭐", "💕"];
 
 interface MemberLite {
@@ -53,6 +53,17 @@ function youtubeSearchUrl(title: string, year?: string | null) {
   )}`;
 }
 
+// "Where to watch" search links — opens the site pre-searched for the title.
+function justwatchUrl(title: string) {
+  return `https://www.justwatch.com/ph/search?q=${encodeURIComponent(title)}`;
+}
+function tubiUrl(title: string) {
+  return `https://tubitv.com/search/${encodeURIComponent(title)}`;
+}
+function plexUrl(title: string) {
+  return `https://www.plex.tv/search/?q=${encodeURIComponent(title)}`;
+}
+
 function RandomizerInner() {
   const router = useRouter();
   const { activeCircle } = useCircle();
@@ -60,20 +71,15 @@ function RandomizerInner() {
   const [members, setMembers] = useState<MemberLite[]>([]);
   const [pick, setPick] = useState<WatchlistItem | null>(null);
   const [spinning, setSpinning] = useState(false);
-  // "all" | "movie" | "tv" | "member:<user_id>"
   const [filter, setFilter] = useState<string>("all");
   const [picked, setPicked] = useState(false);
   const [msgIdx, setMsgIdx] = useState(0);
   const [trailerUrl, setTrailerUrl] = useState<string | null>(null);
   const [loadingTrailer, setLoadingTrailer] = useState(false);
-  // Confetti burst toggle.
   const [confetti, setConfetti] = useState(false);
 
   const loadItems = useCallback(async () => {
-    if (!activeCircle) {
-      setItems([]);
-      return;
-    }
+    if (!activeCircle) { setItems([]); return; }
     const { data } = await supabase
       .from("watchlist_items")
       .select("*")
@@ -83,29 +89,16 @@ function RandomizerInner() {
   }, [activeCircle]);
 
   const loadMembers = useCallback(async () => {
-    if (!activeCircle) {
-      setMembers([]);
-      return;
-    }
+    if (!activeCircle) { setMembers([]); return; }
     const m = await getCircleMembers(activeCircle.id);
-    setMembers(
-      m.map((x) => ({
-        user_id: x.user_id,
-        name: x.profile?.display_name || "Member",
-      })),
-    );
+    setMembers(m.map((x) => ({ user_id: x.user_id, name: x.profile?.display_name || "Member" })));
   }, [activeCircle]);
 
-  useEffect(() => {
-    loadItems();
-    loadMembers();
-  }, [loadItems, loadMembers]);
+  useEffect(() => { loadItems(); loadMembers(); }, [loadItems, loadMembers]);
 
   useEffect(() => {
     if (!spinning) return;
-    const timer = setInterval(() => {
-      setMsgIdx((i) => (i + 1) % COOKING_MESSAGES.length);
-    }, 500);
+    const timer = setInterval(() => { setMsgIdx((i) => (i + 1) % COOKING_MESSAGES.length); }, 500);
     return () => clearInterval(timer);
   }, [spinning]);
 
@@ -113,9 +106,7 @@ function RandomizerInner() {
     return items.filter((i) => {
       if (filter === "movie") return i.type === "movie";
       if (filter === "tv") return i.type === "tv";
-      if (filter.startsWith("member:")) {
-        return i.added_by_id === filter.slice("member:".length);
-      }
+      if (filter.startsWith("member:")) return i.added_by_id === filter.slice("member:".length);
       return true;
     });
   }
@@ -135,11 +126,9 @@ function RandomizerInner() {
     setPick(chosen);
     setSpinning(false);
     setPicked(true);
-    // Celebrate!
     setConfetti(true);
     setTimeout(() => setConfetti(false), 1600);
 
-    // Fetch the trailer link in the background
     setLoadingTrailer(true);
     try {
       const url = await fetchTrailerUrl(chosen.title, chosen.type, chosen.year);
@@ -158,10 +147,7 @@ function RandomizerInner() {
 
   async function markWatched() {
     if (!pick) return;
-    await supabase
-      .from("watchlist_items")
-      .update({ watched: true })
-      .eq("id", pick.id);
+    await supabase.from("watchlist_items").update({ watched: true }).eq("id", pick.id);
     setItems((prev) => prev.filter((i) => i.id !== pick.id));
     setPick(null);
     setPicked(false);
@@ -172,10 +158,7 @@ function RandomizerInner() {
     { value: "all", label: "Any" },
     { value: "movie", label: "Movies only" },
     { value: "tv", label: "TV only" },
-    ...members.map((m) => ({
-      value: `member:${m.user_id}`,
-      label: `${m.name}'s picks`,
-    })),
+    ...members.map((m) => ({ value: `member:${m.user_id}`, label: `${m.name}'s picks` })),
   ];
 
   const pool = getPool();
@@ -231,12 +214,10 @@ function RandomizerInner() {
         </div>
 
         {/* Spin card */}
-        <div
-          className={clsx(
-            "glass rounded-3xl p-8 mb-6 min-h-64 flex flex-col items-center justify-center transition-all relative overflow-hidden",
-            picked && "shadow-xl shadow-rose-100",
-          )}
-        >
+        <div className={clsx(
+          "glass rounded-3xl p-8 mb-6 min-h-64 flex flex-col items-center justify-center transition-all relative overflow-hidden",
+          picked && "shadow-xl shadow-rose-100",
+        )}>
           {/* Confetti burst */}
           {confetti && (
             <div className="pointer-events-none absolute inset-0 z-20">
@@ -244,10 +225,7 @@ function RandomizerInner() {
                 <span
                   key={i}
                   className="cp-confetti-piece"
-                  style={{
-                    left: `${Math.random() * 100}%`,
-                    animationDelay: `${Math.random() * 0.4}s`,
-                  }}
+                  style={{ left: `${Math.random() * 100}%`, animationDelay: `${Math.random() * 0.4}s` }}
                 >
                   {CONFETTI[i % CONFETTI.length]}
                 </span>
@@ -262,25 +240,14 @@ function RandomizerInner() {
             </div>
           )}
 
-          {/* Popcorn cooking loader */}
           {spinning && (
             <div className="flex flex-col items-center">
               <div className="relative w-44 h-36 flex items-end justify-center">
                 {KERNELS.map((k, i) => (
-                  <span
-                    key={i}
-                    className="kernel"
-                    style={
-                      {
-                        "--pop-x": k.x,
-                        animationDelay: k.delay,
-                      } as React.CSSProperties
-                    }
-                  >
+                  <span key={i} className="kernel" style={{ "--pop-x": k.x, animationDelay: k.delay } as React.CSSProperties}>
                     <Popcorn size={k.size} />
                   </span>
                 ))}
-
                 <div className="pot-shake relative z-10">
                   <svg width="84" height="80" viewBox="0 0 84 80" xmlns="http://www.w3.org/2000/svg">
                     <path d="M14 26 L70 26 L62 78 L22 78 Z" fill="#f43f72" />
@@ -301,46 +268,24 @@ function RandomizerInner() {
             <div className="burst relative z-10">
               <div className="w-24 h-36 rounded-2xl overflow-hidden mx-auto mb-4 shadow-lg title-bob">
                 {pick.poster ? (
-                  <Image
-                    src={pick.poster}
-                    alt={pick.title}
-                    width={96}
-                    height={144}
-                    className="w-full h-full object-cover"
-                  />
+                  <Image src={pick.poster} alt={pick.title} width={96} height={144} className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full bg-rose-100 flex items-center justify-center">
-                    {pick.type === "tv" ? (
-                      <Tv size={28} className="text-rose-300" />
-                    ) : (
-                      <Film size={28} className="text-rose-300" />
-                    )}
+                    {pick.type === "tv" ? <Tv size={28} className="text-rose-300" /> : <Film size={28} className="text-rose-300" />}
                   </div>
                 )}
               </div>
 
-              <p className="text-xs text-rose-400 font-medium mb-1">
-                🍿 tonight you&apos;re watching
-              </p>
-              <h2 className="font-display text-2xl font-bold text-gray-800 mb-1">
-                {pick.title}
-              </h2>
+              <p className="text-xs text-rose-400 font-medium mb-1">🍿 tonight you&apos;re watching</p>
+              <h2 className="font-display text-2xl font-bold text-gray-800 mb-1">{pick.title}</h2>
+
               <div className="flex items-center justify-center gap-2 mb-3 flex-wrap">
-                <span
-                  className={clsx(
-                    "text-xs px-2 py-0.5 rounded-full",
-                    pick.type === "movie" ? "pill-movie" : "pill-tv",
-                  )}
-                >
+                <span className={clsx("text-xs px-2 py-0.5 rounded-full", pick.type === "movie" ? "pill-movie" : "pill-tv")}>
                   {pick.type === "tv" ? "TV Show" : "Movie"}
                 </span>
-                {pick.year && (
-                  <span className="text-xs text-gray-400">{pick.year}</span>
-                )}
+                {pick.year && <span className="text-xs text-gray-400">{pick.year}</span>}
                 {pick.rating && pick.rating !== "N/A" && (
-                  <span className="text-xs text-amber-500 font-medium">
-                    ★ {pick.rating}
-                  </span>
+                  <span className="text-xs text-amber-500 font-medium">★ {pick.rating}</span>
                 )}
                 {pick.added_by && (
                   <span className="flex items-center gap-1">
@@ -353,19 +298,53 @@ function RandomizerInner() {
               </div>
 
               {pick.plot && (
-                <p className="text-sm text-gray-500 leading-relaxed max-w-xs mx-auto mb-4">
-                  {pick.plot}
-                </p>
+                <p className="text-sm text-gray-500 leading-relaxed max-w-xs mx-auto mb-4">{pick.plot}</p>
               )}
 
-              {/* Watch Trailer button — always clickable, opens trailer or YT search */}
+              {/* Trailer button */}
               <button
                 onClick={openTrailer}
-                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium bg-red-500 hover:bg-red-600 text-white transition-all hover:scale-105 shadow-md shadow-red-200"
+                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium bg-red-500 hover:bg-red-600 text-white transition-all hover:scale-105 shadow-md shadow-red-200 mb-4"
               >
                 <Play size={16} fill="currentColor" />
                 {loadingTrailer ? "Watch Trailer (searching...)" : "Watch Trailer"}
               </button>
+
+              {/* Where to watch — JustWatch, Tubi, Plex */}
+              <div className="mt-1">
+                <p className="text-[11px] text-gray-400 uppercase tracking-wide font-semibold mb-2">
+                  🎬 Where to watch free
+                </p>
+                <div className="flex items-center justify-center gap-2 flex-wrap">
+                  <a
+                    href={justwatchUrl(pick.title)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-[#1c1c1c] hover:bg-[#333] text-[#f5c518] transition-all hover:scale-105"
+                  >
+                    🔍 JustWatch
+                  </a>
+                  <a
+                    href={tubiUrl(pick.title)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-[#fa3f03] hover:bg-[#d93500] text-white transition-all hover:scale-105"
+                  >
+                    <Tv2 size={12} /> Tubi
+                  </a>
+                  <a
+                    href={plexUrl(pick.title)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-[#e5a00d] hover:bg-[#c98c00] text-black transition-all hover:scale-105"
+                  >
+                    <Play size={12} /> Plex
+                  </a>
+                </div>
+                <p className="text-[10px] text-gray-300 mt-2">
+                  availability varies by region · JustWatch shows all options in PH 🇵🇭
+                </p>
+              </div>
             </div>
           )}
         </div>
@@ -377,11 +356,7 @@ function RandomizerInner() {
           className="w-full flex items-center justify-center gap-2 bg-rose-500 hover:bg-rose-600 disabled:bg-rose-300 text-white font-medium py-4 rounded-2xl text-base transition-all hover:scale-[1.02] shadow-lg shadow-rose-200 mb-4"
         >
           <Shuffle size={20} />
-          {spinning
-            ? "Popping..."
-            : pick
-              ? "Pop again!"
-              : "Pop something on tonight!"}
+          {spinning ? "Popping..." : pick ? "Pop again!" : "Pop something on tonight!"}
         </button>
 
         {/* Post-pick actions */}
@@ -411,10 +386,7 @@ function RandomizerInner() {
         {pool.length === 0 && (
           <p className="text-sm text-gray-400 mt-4">
             This circle&apos;s watchlist is empty!{" "}
-            <a href="/watchlist" className="text-rose-500 underline">
-              Add some titles first
-            </a>
-            .
+            <a href="/watchlist" className="text-rose-500 underline">Add some titles first</a>.
           </p>
         )}
       </main>
