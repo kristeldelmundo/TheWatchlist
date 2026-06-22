@@ -27,8 +27,8 @@ const navItems = [
   { href: "/review", label: "Rate & Share", icon: Star, tourId: "tour-nav-review" },
 ];
 
-// Truncate circle name to a fixed character limit so the navbar stays stable
-function truncateName(name: string, limit = 10) {
+// Cap at 20 chars on desktop, emoji-only on mobile
+function truncateName(name: string, limit = 20) {
   return name.length > limit ? name.slice(0, limit) + "…" : name;
 }
 
@@ -73,18 +73,21 @@ export default function Navbar() {
         {/* Center: circle switcher + nav tabs */}
         <div className="flex items-center gap-1 flex-1 justify-center min-w-0 px-1">
 
-          {/* Circle switcher — fixed width so it never shifts the nav */}
+          {/* Circle switcher:
+              - Mobile: emoji only (no label, no background pill)
+              - Desktop (sm+): emoji + name capped at 20 chars in a rose pill */}
           {user && activeCircle && (
             <div className="relative flex-shrink-0" ref={circleRef} id="tour-nav-circle-switcher">
               <button
                 onClick={() => setCircleMenuOpen((o) => !o)}
-                className="flex items-center gap-1 px-2 py-1 rounded-full bg-rose-50 hover:bg-rose-100 transition-colors"
+                className="flex items-center gap-1 px-1.5 sm:px-2 py-1 rounded-full hover:bg-rose-50 sm:bg-rose-50 sm:hover:bg-rose-100 transition-colors"
               >
                 <span className="text-sm flex-shrink-0">{activeCircle.emoji}</span>
-                <span className="text-xs font-medium text-rose-600 whitespace-nowrap">
+                {/* Name hidden on mobile, visible sm+ */}
+                <span className="hidden sm:inline text-xs font-medium text-rose-600 whitespace-nowrap">
                   {truncateName(activeCircle.name)}
                 </span>
-                <ChevronDown size={10} className="text-rose-400 flex-shrink-0" />
+                <ChevronDown size={10} className="text-gray-400 sm:text-rose-400 flex-shrink-0" />
               </button>
 
               {circleMenuOpen && (
