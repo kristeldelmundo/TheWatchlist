@@ -16,7 +16,6 @@ import {
   Film,
   Tv,
   Play,
-  Tv2,
 } from "lucide-react";
 import { clsx } from "clsx";
 import Popcorn from "@/components/ui/Popcorn";
@@ -51,23 +50,6 @@ function youtubeSearchUrl(title: string, year?: string | null) {
   return `https://www.youtube.com/results?search_query=${encodeURIComponent(
     `${title} ${year || ""} trailer`,
   )}`;
-}
-
-// "Where to watch" search links — all verified to work in the Philippines
-function justwatchUrl(title: string) {
-  return `https://www.justwatch.com/ph/search?q=${encodeURIComponent(title)}`;
-}
-function tubiUrl(title: string) {
-  return `https://tubitv.com/search/${encodeURIComponent(title)}`;
-}
-function plexUrl(title: string) {
-  return `https://www.plex.tv/search/?q=${encodeURIComponent(title)}`;
-}
-function viuUrl(title: string) {
-  return `https://www.viu.com/ott/ph/en-us/search?q=${encodeURIComponent(title)}`;
-}
-function iwanttfcUrl(title: string) {
-  return `https://iwanttfc.com/#!/search?q=${encodeURIComponent(title)}`;
 }
 
 function RandomizerInner() {
@@ -306,66 +288,13 @@ function RandomizerInner() {
                 <p className="text-sm text-gray-500 leading-relaxed max-w-xs mx-auto mb-4">{pick.plot}</p>
               )}
 
-              {/* Trailer button */}
               <button
                 onClick={openTrailer}
-                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium bg-red-500 hover:bg-red-600 text-white transition-all hover:scale-105 shadow-md shadow-red-200 mb-4"
+                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium bg-red-500 hover:bg-red-600 text-white transition-all hover:scale-105 shadow-md shadow-red-200"
               >
                 <Play size={16} fill="currentColor" />
                 {loadingTrailer ? "Watch Trailer (searching...)" : "Watch Trailer"}
               </button>
-
-              {/* Where to watch free — all PH-verified */}
-              <div className="mt-1">
-                <p className="text-[11px] text-gray-400 uppercase tracking-wide font-semibold mb-2">
-                  🎬 Where to watch free
-                </p>
-                <div className="flex items-center justify-center gap-2 flex-wrap">
-                  <a
-                    href={justwatchUrl(pick.title)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-[#1c1c1c] hover:bg-[#333] text-[#f5c518] transition-all hover:scale-105"
-                  >
-                    🔍 JustWatch
-                  </a>
-                  <a
-                    href={tubiUrl(pick.title)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-[#fa3f03] hover:bg-[#d93500] text-white transition-all hover:scale-105"
-                  >
-                    <Tv2 size={12} /> Tubi
-                  </a>
-                  <a
-                    href={plexUrl(pick.title)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-[#e5a00d] hover:bg-[#c98c00] text-black transition-all hover:scale-105"
-                  >
-                    <Play size={12} /> Plex
-                  </a>
-                  <a
-                    href={viuUrl(pick.title)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-[#00c853] hover:bg-[#00a844] text-white transition-all hover:scale-105"
-                  >
-                    <Tv size={12} /> Viu
-                  </a>
-                  <a
-                    href={iwanttfcUrl(pick.title)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-[#0066cc] hover:bg-[#0052a3] text-white transition-all hover:scale-105"
-                  >
-                    <Film size={12} /> iWantTFC
-                  </a>
-                </div>
-                <p className="text-[10px] text-gray-300 mt-2">
-                  availability varies · JustWatch shows all options in PH 🇵🇭
-                </p>
-              </div>
             </div>
           )}
         </div>
